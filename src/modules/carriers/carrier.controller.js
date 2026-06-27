@@ -1,5 +1,6 @@
 import logger from '../../config/logger.js';
 import Carrier from '../../shared/models/Carrier.js';
+import { fromGeoPoint, parseNearQuery, toGeoPoint } from '../../utils/geo.js';
 
 export const listCarriers = async (request, reply) => {
   try {
@@ -50,7 +51,14 @@ export const getCarrierById = async (request, reply) => {
 
 export const createCarrier = async (request, reply) => {
   try {
-    const carrier = await Carrier.create(request.body);
+    const body = { ...request.body };
+    if (body.lat !== undefined || body.lng !== undefined) {
+      const point = toGeoPoint({ lat: body.lat, lng: body.lng });
+      if (point) body.location = point;
+      delete body.lat;
+      delete body.lng;
+    }
+    const carrier = await Carrier.create(body);
     return reply.code(201).send({ success: true, data: carrier });
   } catch (error) {
     if (error.code === 11000) {
@@ -70,9 +78,16 @@ export const createCarrier = async (request, reply) => {
 
 export const updateCarrier = async (request, reply) => {
   try {
+    const update = { ...request.body };
+    if (update.lat !== undefined || update.lng !== undefined) {
+      const point = toGeoPoint({ lat: update.lat, lng: update.lng });
+      if (point) update.location = point;
+      delete update.lat;
+      delete update.lng;
+    }
     const carrier = await Carrier.findByIdAndUpdate(
       request.params.id,
-      { $set: request.body },
+      { $set: update },
       { new: true, runValidators: true },
     ).lean();
     if (!carrier) {
@@ -133,6 +148,54 @@ export const deleteCarrier = async (request, reply) => {
       .send({ success: true, data: { id: carrier._id, status: carrier.status } });
   } catch (error) {
     logger.error('[carriers.controller] deleteCarrier error:', error);
+    return reply.code(500).send({ success: false, error: 'Internal server error' });
+  }
+};
+
+/**
+ * GET /api/carriers/near?lat=X&lng=Y&maxDistance=5000
+ * Devuelve transportistas del más cercano al más lejano.
+ */
+export const nearCarriers = async (request, reply) => {
+  try {
+    let coords;
+    try {
+      coords = parseNearQuery(request.query);
+    } catch (e) {
+      return reply.code(400).send({ success: false, error: e.message });
+    }
+    if (!coords) {
+      return reply.code(400).send({ success: false, error: 'lat and lng are required' });
+    }
+
+    const limit = Math.min(Math.max(parseInt(request.query.limit, 10) || 50, 1), 200);
+    const match = { status: { $ne: 'inactive' } };
+    if (typeof request.query.status === 'string' && request.query.status.length > 0) {
+      match.status = request.query.status;
+    }
+
+    const results = await Carrier.aggregate([
+      {
+        $geoNear: {
+          near: { type: 'Point', coordinates: [coords.lng, coords.lat] },
+          distanceField: 'distanceMeters',
+          maxDistance: coords.maxDistance,
+          spherical: true,
+          query: match,
+        },
+      },
+      { $limit: limit },
+    ]);
+
+    return reply.code(200).send({
+      success: true,
+      data: results,
+      origin: { lat: coords.lat, lng: coords.lng },
+      maxDistance: coords.maxDistance,
+      count: results.length,
+    });
+  } catch (error) {
+    logger.error('[carriers.controller] nearCarriers error:', error);
     return reply.code(500).send({ success: false, error: 'Internal server error' });
   }
 };

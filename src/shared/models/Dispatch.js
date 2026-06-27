@@ -71,6 +71,10 @@ const dispatchSchema = new Schema(
       default: Date.now,
       index: true,
     },
+    location: {
+      type: { type: String, enum: ['Point'], default: 'Point' },
+      coordinates: { type: [Number], default: [0, 0] },
+    },
   },
   {
     timestamps: true,
@@ -78,6 +82,7 @@ const dispatchSchema = new Schema(
   },
 );
 
+dispatchSchema.index({ location: '2dsphere' });
 dispatchSchema.index({ 'carrier.licensePlate': 1, dispatchedAt: -1 });
 dispatchSchema.index(
   { 'carrier.licensePlate': 'text', tripCode: 'text' },

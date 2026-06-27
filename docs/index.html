@@ -75,19 +75,37 @@
             .sidebar-chevron {
                 transition: transform .15s ease;
             }
+
+            .geo-pulse {
+                animation: pulse 2s ease-in-out infinite;
+            }
+
+            @keyframes pulse {
+
+                0%,
+                100% {
+                    opacity: 1;
+                }
+
+                50% {
+                    opacity: .5;
+                }
+            }
         </style>
     </head>
 
     <body class="bg-slate-950 text-slate-100 min-h-screen">
 
         <!-- Header -->
-        <header class="bg-slate-900 border-b border-slate-800 px-6 py-3 flex items-center gap-4 sticky top-0 z-30">
+        <header
+            class="bg-slate-900 border-b border-slate-800 px-6 py-3 flex flex-wrap items-center gap-3 sticky top-0 z-30">
             <div class="flex items-center gap-2">
                 <span class="text-xl">🇻🇪</span>
                 <h1 class="font-semibold text-lg">Venezuela Route 72</h1>
                 <span class="text-xs text-slate-400 hidden sm:inline">— API Tester</span>
             </div>
-            <div class="flex-1 flex items-center gap-2 max-w-2xl">
+
+            <div class="flex items-center gap-2 flex-1 min-w-[280px] max-w-2xl">
                 <label class="text-xs text-slate-400">Base URL:</label>
                 <input id="baseUrl" type="text"
                     class="flex-1 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm font-mono focus:outline-none focus:border-blue-500"
@@ -95,7 +113,17 @@
                 <button id="saveBaseUrl"
                     class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm">Guardar</button>
             </div>
-            <div class="text-xs text-slate-400 hidden md:block">
+
+            <!-- Geolocalización -->
+            <div class="flex items-center gap-2">
+                <button id="geoBtn" title="Obtener ubicación del dispositivo"
+                    class="bg-emerald-600 hover:bg-emerald-700 px-3 py-1 rounded text-sm flex items-center gap-1">
+                    <span>📍</span><span id="geoBtnText">Mi ubicación</span>
+                </button>
+                <span id="geoStatus" class="text-xs text-slate-400 hidden sm:inline">— sin ubicación —</span>
+            </div>
+
+            <div class="text-xs text-slate-400 hidden md:block ml-auto">
                 <span id="endpointCount">0</span> endpoints
             </div>
         </header>
@@ -104,14 +132,14 @@
 
             <!-- Sidebar -->
             <aside
-                class="w-64 bg-slate-900 border-r border-slate-800 h-[calc(100vh-57px)] sticky top-[57px] overflow-y-auto scrollbar-thin shrink-0">
+                class="w-64 bg-slate-900 border-r border-slate-800 h-[calc(100vh-65px)] sticky top-[65px] overflow-y-auto scrollbar-thin shrink-0">
                 <nav id="sidebar" class="p-3 space-y-1 text-sm"></nav>
             </aside>
 
             <!-- Main -->
             <main class="flex-1 p-6 space-y-4 min-w-0">
 
-                <!-- Saved IDs bar -->
+                <!-- Saved IDs + Geo bar -->
                 <section class="bg-slate-900 border border-slate-800 rounded-lg p-3">
                     <div class="flex items-center justify-between mb-2">
                         <h2 class="font-semibold text-sm">IDs guardados</h2>
@@ -132,6 +160,32 @@
                Configuración: todos los endpoints de la API
                ======================================================================== */
             const ENDPOINTS = [
+                /* ---------------- Users (CRUD mínimo) ---------------- */
+                {
+                    group: 'Users', icon: '👤',
+                    items: [
+                        { id: 'users-list', name: 'Listar usuarios', method: 'GET', path: '/api/users/' },
+                        {
+                            id: 'users-create', name: 'Crear usuario', method: 'POST', path: '/api/users/',
+                            fields: [
+                                { name: 'name', label: 'Nombre', type: 'text', value: 'Ana' },
+                                { name: 'lastName', label: 'Apellido', type: 'text', value: 'Pérez' },
+                                { name: 'email', label: 'Email', type: 'text', value: 'ana.perez@example.com' },
+                                { name: 'profilePicture', label: 'Foto URL', type: 'text', value: '' },
+                                { name: 'supplyCenter', label: 'supplyCenter (ObjectId, opcional)', type: 'text', fromSaved: 'supplyCenterId' },
+                            ]
+                        },
+                        {
+                            id: 'users-by-id', name: 'Obtener por _id', method: 'GET', path: '/api/users/by-id/:id',
+                            fields: [{ name: 'id', label: '_id (Mongo)', type: 'text', fromSaved: 'userId' }]
+                        },
+                        {
+                            id: 'users-delete', name: 'Eliminar (soft delete)', method: 'DELETE', path: '/api/users/:tagId',
+                            fields: [{ name: 'tagId', label: 'tagId', type: 'text', fromSaved: 'userTagId' }]
+                        },
+                    ],
+                },
+
                 /* ---------------- Items ---------------- */
                 {
                     group: 'Items', icon: '📦',
@@ -165,23 +219,42 @@
                     ],
                 },
 
-                /* ---------------- Supply Centers ---------------- */
+                /* ---------------- SupplyCenters ---------------- */
                 {
                     group: 'SupplyCenters', icon: '🏢',
                     items: [
                         { id: 'sc-list', name: 'Listar centros', method: 'GET', path: '/api/supply-centers/' },
                         {
+                            id: 'sc-near', name: 'Buscar por cercanía', method: 'GET', path: '/api/supply-centers/near',
+                            isGeo: true,
+                            fields: [
+                                { name: 'lat', label: 'lat', type: 'number', value: 10.498, fromGeo: true },
+                                { name: 'lng', label: 'lng', type: 'number', value: -66.853, fromGeo: true },
+                                { name: 'maxDistance', label: 'maxDistance (m)', type: 'number', value: 10000 },
+                                { name: 'limit', label: 'limit', type: 'number', value: 50 },
+                            ]
+                        },
+                        {
+                            id: 'sc-search', name: 'Buscar item en centros', method: 'GET', path: '/api/supply-centers/search',
+                            isGeo: true,
+                            fields: [
+                                { name: 'q', label: 'q (texto a buscar)', type: 'text', value: 'alginato' },
+                                { name: 'lat', label: 'lat (opcional)', type: 'number', value: '', fromGeo: true },
+                                { name: 'lng', label: 'lng (opcional)', type: 'number', value: '', fromGeo: true },
+                                { name: 'limit', label: 'limit', type: 'number', value: 50 },
+                            ]
+                        },
+                        {
                             id: 'sc-create', name: 'Crear centro', method: 'POST', path: '/api/supply-centers/',
                             fields: [
                                 { name: 'name', label: 'Nombre', type: 'text', value: 'Centro Logística Caracas' },
-                                { name: 'managerId', label: 'Manager (ObjectId externo)', type: 'text', value: '' },
                                 { name: 'phone', label: 'Teléfono', type: 'text', value: '+584141234567' },
                                 { name: 'location.state', label: 'Estado', type: 'text', value: 'Distrito Capital' },
                                 { name: 'location.city', label: 'Ciudad', type: 'text', value: 'Caracas' },
                                 { name: 'location.parish', label: 'Parroquia', type: 'text', value: 'Chacao' },
                                 { name: 'location.address', label: 'Dirección', type: 'text', value: 'Av. Principal, Edif. X' },
-                                { name: 'location.coordinates.lat', label: 'Lat', type: 'number', value: 10.498 },
-                                { name: 'location.coordinates.lng', label: 'Lng', type: 'number', value: -66.853 },
+                                { name: 'location.lat', label: 'lat', type: 'number', value: 10.498, fromGeo: true },
+                                { name: 'location.lng', label: 'lng', type: 'number', value: -66.853, fromGeo: true },
                                 { name: 'isActive', label: 'Activo', type: 'checkbox', value: true },
                             ]
                         },
@@ -195,6 +268,8 @@
                                 { name: 'id', label: 'id', type: 'text', fromSaved: 'supplyCenterId' },
                                 { name: 'name', label: 'Nombre', type: 'text', value: 'Centro Caracas' },
                                 { name: 'phone', label: 'Teléfono', type: 'text', value: '+584141234567' },
+                                { name: 'location.lat', label: 'lat', type: 'number', value: 10.498, fromGeo: true },
+                                { name: 'location.lng', label: 'lng', type: 'number', value: -66.853, fromGeo: true },
                                 { name: 'isActive', label: 'Activo', type: 'checkbox', value: true },
                             ]
                         },
@@ -211,6 +286,16 @@
                     items: [
                         { id: 'carriers-list', name: 'Listar transportistas', method: 'GET', path: '/api/carriers/' },
                         {
+                            id: 'carriers-near', name: 'Buscar por cercanía', method: 'GET', path: '/api/carriers/near',
+                            isGeo: true,
+                            fields: [
+                                { name: 'lat', label: 'lat', type: 'number', value: 10.498, fromGeo: true },
+                                { name: 'lng', label: 'lng', type: 'number', value: -66.853, fromGeo: true },
+                                { name: 'maxDistance', label: 'maxDistance (m)', type: 'number', value: 10000 },
+                                { name: 'status', label: 'status (opcional)', type: 'select', options: ['', 'available', 'assigned', 'inactive'], value: '' },
+                            ]
+                        },
+                        {
                             id: 'carriers-create', name: 'Crear transportista', method: 'POST', path: '/api/carriers/',
                             fields: [
                                 { name: 'licensePlate', label: 'Placa', type: 'text', value: 'AB123CD' },
@@ -221,6 +306,8 @@
                                 { name: 'driver.idNumber', label: 'Cédula', type: 'text', value: 'V12345678' },
                                 { name: 'driver.phone', label: 'Teléfono', type: 'text', value: '+584141112222' },
                                 { name: 'status', label: 'Estado', type: 'select', options: ['available', 'assigned', 'inactive'], value: 'available' },
+                                { name: 'lat', label: 'lat (opcional)', type: 'number', value: '', fromGeo: true },
+                                { name: 'lng', label: 'lng (opcional)', type: 'number', value: '', fromGeo: true },
                             ]
                         },
                         {
@@ -233,6 +320,8 @@
                                 { name: 'id', label: 'id', type: 'text', fromSaved: 'carrierId' },
                                 { name: 'licensePlate', label: 'Placa', type: 'text', value: 'AB123CD' },
                                 { name: 'model', label: 'Modelo', type: 'text', value: 'Ford F-150 2024' },
+                                { name: 'lat', label: 'lat', type: 'number', value: '', fromGeo: true },
+                                { name: 'lng', label: 'lng', type: 'number', value: '', fromGeo: true },
                             ]
                         },
                         {
@@ -326,9 +415,20 @@
                                 { name: 'destination.city', label: 'Destino ciudad', type: 'text', value: 'Guatire' },
                                 { name: 'destination.parish', label: 'Destino parroquia', type: 'text', value: 'Guatire' },
                                 { name: 'destination.specificLocation', label: 'Destino específico', type: 'text', value: 'Comunidad El Encanto' },
+                                { name: 'lat', label: 'lat destino (opcional)', type: 'number', value: '', fromGeo: true },
+                                { name: 'lng', label: 'lng destino (opcional)', type: 'number', value: '', fromGeo: true },
                             ]
                         },
                         { id: 'disp-list', name: 'Listar despachos', method: 'GET', path: '/api/dispatches/' },
+                        {
+                            id: 'disp-near', name: 'Buscar por cercanía', method: 'GET', path: '/api/dispatches/near',
+                            isGeo: true,
+                            fields: [
+                                { name: 'lat', label: 'lat', type: 'number', value: 10.498, fromGeo: true },
+                                { name: 'lng', label: 'lng', type: 'number', value: -66.853, fromGeo: true },
+                                { name: 'maxDistance', label: 'maxDistance (m)', type: 'number', value: 10000 },
+                            ]
+                        },
                         {
                             id: 'disp-lookup', name: 'Buscar por placa / tripCode', method: 'GET', path: '/api/dispatches/lookup',
                             fields: [
@@ -339,7 +439,7 @@
                     ],
                 },
 
-                /* ---------------- Emergency Needs ---------------- */
+                /* ---------------- EmergencyNeeds ---------------- */
                 {
                     group: 'EmergencyNeeds', icon: '🆘',
                     items: [
@@ -350,10 +450,21 @@
                                 { name: 'category', label: 'Categoría', type: 'select', options: ['food', 'clothing', 'medicines', 'first_aid', 'tools', 'other'], value: 'food' },
                                 { name: 'description', label: 'Descripción', type: 'textarea', value: 'Familias sin acceso a alimentos desde hace 3 días.' },
                                 { name: 'reportedBy', label: 'Reportado por', type: 'text', value: 'Líder comunitario Pedro Lugo' },
+                                { name: 'lat', label: 'lat (opcional)', type: 'number', value: '', fromGeo: true },
+                                { name: 'lng', label: 'lng (opcional)', type: 'number', value: '', fromGeo: true },
                                 { name: 'audio', label: 'Audio (file, opcional)', type: 'file' },
                             ]
                         },
                         { id: 'need-list', name: 'Listar necesidades', method: 'GET', path: '/api/emergency-needs/' },
+                        {
+                            id: 'need-near', name: 'Buscar por cercanía', method: 'GET', path: '/api/emergency-needs/near',
+                            isGeo: true,
+                            fields: [
+                                { name: 'lat', label: 'lat', type: 'number', value: 10.498, fromGeo: true },
+                                { name: 'lng', label: 'lng', type: 'number', value: -66.853, fromGeo: true },
+                                { name: 'maxDistance', label: 'maxDistance (m)', type: 'number', value: 10000 },
+                            ]
+                        },
                         { id: 'need-active', name: 'Activas (público)', method: 'GET', path: '/api/emergency-needs/public/active' },
                         {
                             id: 'need-get', name: 'Obtener necesidad', method: 'GET', path: '/api/emergency-needs/:id',
@@ -366,6 +477,8 @@
                                 { name: 'zone', label: 'Zona', type: 'text', value: 'Barrio El Carmen, Petare' },
                                 { name: 'category', label: 'Categoría', type: 'select', options: ['food', 'clothing', 'medicines', 'first_aid', 'tools', 'other'], value: 'food' },
                                 { name: 'description', label: 'Descripción', type: 'textarea', value: 'Actualizado' },
+                                { name: 'lat', label: 'lat', type: 'number', value: '', fromGeo: true },
+                                { name: 'lng', label: 'lng', type: 'number', value: '', fromGeo: true },
                             ]
                         },
                         {
@@ -387,11 +500,13 @@
             const state = {
                 baseUrl: localStorage.getItem(`${STORAGE_KEY}-base`) || 'http://localhost:3000',
                 savedIds: JSON.parse(localStorage.getItem(`${STORAGE_KEY}-ids`) || '{}'),
+                geo: JSON.parse(localStorage.getItem(`${STORAGE_KEY}-geo`) || 'null'),
             };
 
             const saveState = () => {
                 localStorage.setItem(`${STORAGE_KEY}-base`, state.baseUrl);
                 localStorage.setItem(`${STORAGE_KEY}-ids`, JSON.stringify(state.savedIds));
+                localStorage.setItem(`${STORAGE_KEY}-geo`, JSON.stringify(state.geo));
             };
 
             const methodColor = (m) => `method-${m}`;
@@ -405,6 +520,25 @@
                 });
             };
 
+            /* Construye query string solo con campos no vacíos */
+            const buildQuery = (fields, formEl) => {
+                const params = new URLSearchParams();
+                for (const f of fields) {
+                    const el = formEl.querySelector(`[name="${f.name}"]`);
+                    if (!el) continue;
+                    const raw = el.type === 'checkbox' ? el.checked : el.value;
+                    if (raw === '' || raw === null || raw === undefined) continue;
+                    if (f.type === 'number') {
+                        const n = Number(raw);
+                        if (Number.isFinite(n)) params.append(f.name, n);
+                    } else {
+                        params.append(f.name, raw);
+                    }
+                }
+                const qs = params.toString();
+                return qs ? `?${qs}` : '';
+            };
+
             /* Asigna obj.a.b.c = value creando objetos intermedios */
             const setNestedValue = (obj, path, value) => {
                 const keys = path.split('.');
@@ -416,11 +550,7 @@
                 cur[keys[keys.length - 1]] = value;
             };
 
-            /* Construye el body a enviar:
-               - Campos con parseJson:true se interpretan como JSON
-               - Campos anidados (con '.') se fusionan con setNestedValue
-               - type:file se ignoran (se manejan aparte al construir FormData)
-               - type:checkbox produce boolean */
+            /* Construye el body a enviar (solo para POST/PUT/PATCH). */
             const collectBody = (fields, formEl) => {
                 const body = {};
                 for (const f of fields) {
@@ -428,6 +558,7 @@
                     const el = formEl.querySelector(`[name="${f.name}"]`);
                     if (!el) continue;
                     const raw = el.type === 'checkbox' ? el.checked : el.value;
+                    if (raw === '' && f.type !== 'checkbox') continue;
 
                     if (f.parseJson) {
                         const text = (raw || '').trim();
@@ -460,13 +591,81 @@
                 if (data.licensePlate && !state.savedIds.carrierPlate) state.savedIds.carrierPlate = data.licensePlate;
                 if (data._id && Array.isArray(data.stocks)) state.savedIds.inventoryId = data._id;
                 if (data._id && data.zone) state.savedIds.needId = data._id;
-                if (data._id && data.coordinates) state.savedIds.supplyCenterId = data._id;
+                if (data._id && (data.coordinates || data.location)) state.savedIds.supplyCenterId = data._id;
                 if (data._id && data.name && (data.unit || data.category) && !state.savedIds.itemId) {
                     state.savedIds.itemId = data._id;
                 }
+                if (data._id && data.email) state.savedIds.userId = data._id;
+                if (data.tagId) state.savedIds.userTagId = data.tagId;
                 saveState();
                 renderSavedIds();
                 autoFillFromSaved();
+                applyGeoToForms();
+            };
+
+            /* ========================================================================
+               Geolocalización del dispositivo
+               ======================================================================== */
+            const updateGeoStatus = () => {
+                const el = document.getElementById('geoStatus');
+                const btn = document.getElementById('geoBtnText');
+                if (state.geo) {
+                    el.textContent = `📍 ${state.geo.lat.toFixed(4)}, ${state.geo.lng.toFixed(4)}`;
+                    el.classList.remove('text-slate-400');
+                    el.classList.add('text-emerald-400');
+                    btn.textContent = 'Actualizar';
+                } else {
+                    el.textContent = '— sin ubicación —';
+                    el.classList.add('text-slate-400');
+                    el.classList.remove('text-emerald-400');
+                    btn.textContent = 'Mi ubicación';
+                }
+            };
+
+            const requestGeo = () => {
+                if (!navigator.geolocation) {
+                    alert('Tu navegador no soporta geolocalización.');
+                    return;
+                }
+                const status = document.getElementById('geoStatus');
+                status.classList.add('geo-pulse');
+                status.textContent = '…obteniendo ubicación…';
+
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        state.geo = {
+                            lat: pos.coords.latitude,
+                            lng: pos.coords.longitude,
+                            accuracy: pos.coords.accuracy,
+                            capturedAt: new Date().toISOString(),
+                        };
+                        saveState();
+                        status.classList.remove('geo-pulse');
+                        updateGeoStatus();
+                        applyGeoToForms();
+                    },
+                    (err) => {
+                        status.classList.remove('geo-pulse');
+                        status.textContent = `Error: ${err.message}`;
+                        status.classList.remove('text-emerald-400');
+                        status.classList.add('text-red-400');
+                    },
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
+                );
+            };
+
+            /* Aplica lat/lng a todos los campos con flag fromGeo:true (solo si están vacíos) */
+            const applyGeoToForms = () => {
+                if (!state.geo) return;
+                document.querySelectorAll('[data-from-geo]').forEach(input => {
+                    if (!input.value) {
+                        if (input.name === 'lat' || input.name.endsWith('.lat')) {
+                            input.value = state.geo.lat;
+                        } else if (input.name === 'lng' || input.name.endsWith('.lng')) {
+                            input.value = state.geo.lng;
+                        }
+                    }
+                });
             };
 
             /* ========================================================================
@@ -495,7 +694,6 @@
       `).join('');
             };
 
-            /* Resalta el link del sidebar correspondiente al endpoint visible */
             const setupScrollSpy = () => {
                 const links = document.querySelectorAll('.sidebar-link');
                 const articles = document.querySelectorAll('article[id]');
@@ -547,11 +745,13 @@
                 const ph = f.label;
                 const pathKey = f.name.split('.')[0];
                 const fromSaved = f.fromSaved ? `data-from-saved="${f.fromSaved}"` : '';
+                const fromGeo = f.fromGeo ? `data-from-geo="1"` : '';
+                const dataAttrs = `${fromSaved} ${fromGeo}`.trim();
 
                 if (f.type === 'textarea') {
                     return `<div>
           <label class="block text-xs text-slate-400 mb-1">${ph}</label>
-          <textarea name="${f.name}" rows="4" data-path-key="${pathKey}" ${fromSaved}
+          <textarea name="${f.name}" rows="4" data-path-key="${pathKey}" ${dataAttrs}
             placeholder="${escapeAttr(f.placeholder || '')}"
             class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm font-mono focus:border-blue-500 focus:outline-none">${escapeAttr(f.value || '')}</textarea>
         </div>`;
@@ -559,9 +759,9 @@
                 if (f.type === 'select') {
                     return `<div>
           <label class="block text-xs text-slate-400 mb-1">${ph}</label>
-          <select name="${f.name}" data-path-key="${pathKey}" ${fromSaved}
+          <select name="${f.name}" data-path-key="${pathKey}" ${dataAttrs}
             class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm focus:border-blue-500 focus:outline-none">
-            ${f.options.map(o => `<option value="${escapeAttr(o)}" ${o === f.value ? 'selected' : ''}>${o}</option>`).join('')}
+            ${f.options.map(o => `<option value="${escapeAttr(o)}" ${String(o) === String(f.value) ? 'selected' : ''}>${o || '(vacío)'}</option>`).join('')}
           </select>
         </div>`;
                 }
@@ -581,9 +781,9 @@
                 }
                 const inputType = f.type === 'number' ? 'number' : 'text';
                 return `<div>
-        <label class="block text-xs text-slate-400 mb-1">${ph}</label>
-        <input type="${inputType}" name="${f.name}" data-path-key="${pathKey}" ${fromSaved}
-          value="${escapeAttr(f.value || '')}"
+        <label class="block text-xs text-slate-400 mb-1">${ph}${f.fromGeo ? ' <span class="text-emerald-400" title="Se autollena con tu ubicación">📍</span>' : ''}</label>
+        <input type="${inputType}" name="${f.name}" data-path-key="${pathKey}" ${dataAttrs}
+          value="${escapeAttr(f.value ?? '')}"
           placeholder="${escapeAttr(f.placeholder || '')}"
           class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm font-mono focus:border-blue-500 focus:outline-none" />
       </div>`;
@@ -592,15 +792,18 @@
             const endpointHtml = (ep) => {
                 const fullPath = ep.path;
                 const fields = ep.fields || [];
+                const geoBadge = ep.isGeo
+                    ? '<span class="ml-2 text-[10px] bg-emerald-700 text-emerald-100 px-1.5 py-0.5 rounded" title="Soporta autollenado con geolocalización">📍 GEO</span>'
+                    : '';
                 return `
         <article id="${ep.id}" class="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden scroll-mt-20">
           <header class="flex items-center gap-3 px-4 py-3 bg-slate-900 border-b border-slate-800">
             <span class="${methodColor(ep.method)} text-white text-xs font-bold px-2 py-1 rounded">${ep.method}</span>
             <code class="text-sm font-mono text-slate-200">${fullPath}</code>
-            <span class="ml-auto text-sm text-slate-400">${ep.name}</span>
+            <span class="ml-auto text-sm text-slate-400">${ep.name}${geoBadge}</span>
           </header>
           <div class="p-4">
-            <form data-endpoint="${ep.id}" class="space-y-3">
+            <form data-endpoint="${ep.id}" data-method="${ep.method}" data-has-query="${ep.method === 'GET' ? '1' : '0'}" class="space-y-3">
               ${fields.length
                         ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${fields.map(fieldHtml).join('')}</div>`
                         : '<p class="text-xs text-slate-500">Esta petición no requiere cuerpo.</p>'}
@@ -643,6 +846,7 @@
                 document.getElementById('endpointCount').textContent =
                     ENDPOINTS.reduce((a, g) => a + g.items.length, 0);
                 autoFillFromSaved();
+                applyGeoToForms();
                 attachFormHandlers();
                 setupScrollSpy();
             };
@@ -690,7 +894,11 @@
 
                         const t0 = performance.now();
                         try {
-                            const url = state.baseUrl.replace(/\/$/, '') + buildPath(ep.path, form);
+                            let path = buildPath(ep.path, form);
+                            if (ep.method === 'GET') {
+                                path += buildQuery(ep.fields || [], form);
+                            }
+                            const url = state.baseUrl.replace(/\/$/, '') + path;
 
                             let body, headers = {};
                             if (['POST', 'PUT', 'PATCH'].includes(ep.method)) {
@@ -745,6 +953,7 @@
                     form.querySelector('[data-action="reset"]').addEventListener('click', () => {
                         form.reset();
                         autoFillFromSaved();
+                        applyGeoToForms();
                     });
                 });
 
@@ -770,6 +979,7 @@
                 btn.textContent = '¡Guardado!';
                 setTimeout(() => (btn.textContent = 'Guardar'), 1000);
             });
+            document.getElementById('geoBtn').addEventListener('click', requestGeo);
             document.getElementById('clearIds').addEventListener('click', () => {
                 if (confirm('¿Borrar todos los IDs guardados?')) {
                     state.savedIds = {};
@@ -779,6 +989,7 @@
                 }
             });
 
+            updateGeoStatus();
             renderSidebar();
             renderSavedIds();
             renderEndpoints();

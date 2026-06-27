@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import logger from '../../config/logger.js';
 import EmergencyNeed from '../../shared/models/EmergencyNeed.js';
+import { parseNearQuery, toGeoPoint } from '../../utils/geo.js';
 
 const AUDIO_STORAGE_DIR = '/app/storage/requests';
 const ALLOWED_AUDIO_EXT = new Set(['.mp3', '.ogg', '.wav', '.m4a', '.webm', '.opus', '.mp4']);
@@ -51,7 +52,7 @@ const readAudioFile = async (request) => {
 
 export const createEmergencyNeed = async (request, reply) => {
   try {
-    const { zone, category, description, reportedBy } = request.body;
+    const { zone, category, description, reportedBy, lat, lng } = request.body;
     let audioPath = null;
 
     const audio = await readAudioFile(request);
@@ -64,12 +65,21 @@ export const createEmergencyNeed = async (request, reply) => {
       audioPath = `/uploads/requests/${fileName}`;
     }
 
+    let location;
+    if (lat !== undefined || lng !== undefined) {
+      location = toGeoPoint({ lat, lng });
+      if (!location) {
+        return reply.code(400).send({ success: false, error: 'Invalid lat/lng' });
+      }
+    }
+
     const newNeed = await EmergencyNeed.create({
       zone,
       category,
       description: description || '',
       reportedBy,
       audioPath,
+      ...(location ? { location } : {}),
     });
 
     return reply.code(201).send({
@@ -161,9 +171,16 @@ export const getEmergencyNeedById = async (request, reply) => {
 
 export const updateEmergencyNeed = async (request, reply) => {
   try {
+    const update = { ...request.body };
+    if (update.lat !== undefined || update.lng !== undefined) {
+      const point = toGeoPoint({ lat: update.lat, lng: update.lng });
+      if (point) update.location = point;
+      delete update.lat;
+      delete update.lng;
+    }
     const need = await EmergencyNeed.findByIdAndUpdate(
       request.params.id,
-      { $set: request.body },
+      { $set: update },
       { new: true, runValidators: true },
     ).lean();
     if (!need) {
@@ -216,6 +233,50 @@ export const deleteEmergencyNeed = async (request, reply) => {
       return reply.code(400).send({ success: false, error: 'Invalid ObjectId' });
     }
     logger.error('[needs.controller] deleteEmergencyNeed error:', error);
+    return reply.code(500).send({ success: false, error: 'Internal server error' });
+  }
+};
+
+/**
+ * GET /api/emergency-needs/near?lat=X&lng=Y&maxDistance=5000
+ * Devuelve necesidades activas ordenadas del más cercano al más lejano.
+ */
+export const nearEmergencyNeeds = async (request, reply) => {
+  try {
+    let coords;
+    try {
+      coords = parseNearQuery(request.query);
+    } catch (e) {
+      return reply.code(400).send({ success: false, error: e.message });
+    }
+    if (!coords) {
+      return reply.code(400).send({ success: false, error: 'lat and lng are required' });
+    }
+
+    const limit = Math.min(Math.max(parseInt(request.query.limit, 10) || 50, 1), 200);
+
+    const results = await EmergencyNeed.aggregate([
+      {
+        $geoNear: {
+          near: { type: 'Point', coordinates: [coords.lng, coords.lat] },
+          distanceField: 'distanceMeters',
+          maxDistance: coords.maxDistance,
+          spherical: true,
+          query: { isResolved: false },
+        },
+      },
+      { $limit: limit },
+    ]);
+
+    return reply.code(200).send({
+      success: true,
+      data: results,
+      origin: { lat: coords.lat, lng: coords.lng },
+      maxDistance: coords.maxDistance,
+      count: results.length,
+    });
+  } catch (error) {
+    logger.error('[needs.controller] nearEmergencyNeeds error:', error);
     return reply.code(500).send({ success: false, error: 'Internal server error' });
   }
 };

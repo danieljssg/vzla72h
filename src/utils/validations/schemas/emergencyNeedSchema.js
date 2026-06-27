@@ -7,6 +7,8 @@ export const createEmergencyNeedSchema = z.object({
   category: z.enum(CATEGORIES, { errorMap: () => ({ message: 'Invalid category' }) }),
   description: z.string().max(1000).trim().optional().default(''),
   reportedBy: z.string().min(2, 'reportedBy must be at least 2 characters').max(200).trim(),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
 });
 
 export const updateEmergencyNeedSchema = z
@@ -15,5 +17,7 @@ export const updateEmergencyNeedSchema = z
     category: z.enum(CATEGORIES).optional(),
     description: z.string().max(1000).trim().optional(),
     reportedBy: z.string().min(2).max(200).trim().optional(),
+    lat: z.number().min(-90).max(90).optional(),
+    lng: z.number().min(-180).max(180).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: 'Body must not be empty' });

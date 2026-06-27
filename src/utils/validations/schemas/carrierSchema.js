@@ -19,12 +19,21 @@ const driverSchema = z.object({
   phone: z.string().min(7).max(30).trim(),
 });
 
+const locationSchema = z
+  .object({
+    lat: z.number().min(-90).max(90),
+    lng: z.number().min(-180).max(180),
+  })
+  .optional();
+
 export const createCarrierSchema = z.object({
   licensePlate: licensePlateField,
   vehicleType: z.enum(VEHICLE_TYPES),
   model: z.string().min(1).max(80).trim(),
   driver: driverSchema,
   status: z.enum(STATUSES).optional().default('available'),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
 });
 
 export const updateCarrierSchema = z
@@ -34,6 +43,8 @@ export const updateCarrierSchema = z
     model: z.string().min(1).max(80).trim().optional(),
     driver: driverSchema.optional(),
     status: z.enum(STATUSES).optional(),
+    lat: z.number().min(-90).max(90).optional(),
+    lng: z.number().min(-180).max(180).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: 'Body must not be empty' });
 

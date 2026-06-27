@@ -4,6 +4,7 @@ import Dispatch from '../../shared/models/Dispatch.js';
 import Inventory from '../../shared/models/Inventory.js';
 import Item from '../../shared/models/Item.js';
 import SupplyCenter from '../../shared/models/SupplyCenter.js';
+import { parseNearQuery, toGeoPoint } from '../../utils/geo.js';
 
 const PUBLIC_PROJECTION = {
   _id: 0,
@@ -80,6 +81,14 @@ export const createDispatch = async (request, reply) => {
         'destination.specificLocation',
       ),
     };
+
+    let location;
+    if (body.lat !== undefined || body.lng !== undefined) {
+      location = toGeoPoint({ lat: body.lat, lng: body.lng });
+      if (!location) {
+        return reply.code(400).send({ success: false, error: 'Invalid lat/lng' });
+      }
+    }
 
     const itemsInput = body.loadedItems.map((entry, idx) => ({
       index: idx,
@@ -185,6 +194,7 @@ export const createDispatch = async (request, reply) => {
       destination,
       loadedItems: loadedItemsEmbedded,
       status: 'in_transit',
+      ...(location ? { location } : {}),
     });
 
     await addJob('PROCESS_CARRIER_PHOTO', {
@@ -271,6 +281,50 @@ export const getDispatchByPlateOrCode = async (request, reply) => {
     return reply.code(200).send({ success: true, data: dispatch });
   } catch (error) {
     logger.error('[dispatch.controller] getDispatchByPlateOrCode error:', error);
+    return reply.code(500).send({ success: false, error: 'Internal server error' });
+  }
+};
+
+/**
+ * GET /api/dispatches/near?lat=X&lng=Y&maxDistance=5000
+ * Devuelve despachos del más cercano al más lejano.
+ */
+export const nearDispatches = async (request, reply) => {
+  try {
+    let coords;
+    try {
+      coords = parseNearQuery(request.query);
+    } catch (e) {
+      return reply.code(400).send({ success: false, error: e.message });
+    }
+    if (!coords) {
+      return reply.code(400).send({ success: false, error: 'lat and lng are required' });
+    }
+
+    const limit = Math.min(Math.max(parseInt(request.query.limit, 10) || 50, 1), 200);
+
+    const results = await Dispatch.aggregate([
+      {
+        $geoNear: {
+          near: { type: 'Point', coordinates: [coords.lng, coords.lat] },
+          distanceField: 'distanceMeters',
+          maxDistance: coords.maxDistance,
+          spherical: true,
+        },
+      },
+      { $project: { ...PUBLIC_PROJECTION, distanceMeters: 1 } },
+      { $limit: limit },
+    ]);
+
+    return reply.code(200).send({
+      success: true,
+      data: results,
+      origin: { lat: coords.lat, lng: coords.lng },
+      maxDistance: coords.maxDistance,
+      count: results.length,
+    });
+  } catch (error) {
+    logger.error('[dispatch.controller] nearDispatches error:', error);
     return reply.code(500).send({ success: false, error: 'Internal server error' });
   }
 };

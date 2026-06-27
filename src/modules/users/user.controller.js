@@ -1,48 +1,26 @@
 import logger from '../../config/logger.js';
 import User from '../../shared/models/User.js';
-import {
-  createNewUser,
-  createUsersInBatch,
-  deleteUser,
-  getAllDescendants,
-  getTeamMembers,
-  getUserByTagId,
-  moveUserToNewHierarchy,
-  updateUser,
-} from './user.service.js';
-
-// ==================== CRUD DE USUARIOS ====================
-
-export const getAllUsers = async (_request, reply) => {
-  try {
-    const users = await User.find({ isActive: true });
-    return reply.send({
-      success: true,
-      data: users,
-      count: users.length,
-    });
-  } catch (error) {
-    logger.error(error);
-    return reply.code(400).send({ success: false, error: error.message });
-  }
-};
+import { createNewUser, deleteUser, getAllUsers } from './user.service.js';
 
 /**
- * Obtener perfil de usuario por tagId
+ * GET /api/users/
+ * Lista los usuarios activos. Soporta paginación y filtro por supplyCenter.
  */
-export const getProfile = async (request, reply) => {
+export const list = async (request, reply) => {
   try {
-    const { tagId } = request.params;
-    const user = await getUserByTagId(tagId);
-    return reply.send({ success: true, data: user });
+    const users = await getAllUsers(request.query);
+    return reply.send({ success: true, data: users, count: users.length });
   } catch (error) {
-    logger.error(error);
-    return reply.code(404).send({ success: false, error: error.message });
+    logger.error('[users.controller] list error:', error);
+    return reply.code(500).send({ success: false, error: 'Internal server error' });
   }
 };
 
 /**
- * Crear nuevo usuario
+ * POST /api/users/
+ * Crea un nuevo usuario. El frontend (better-auth) se encarga del flujo
+ * de autenticación. Aquí solo se mantienen los datos básicos del perfil
+ * y la referencia opcional a un centro de acopio.
  */
 export const create = async (request, reply) => {
   try {
@@ -53,81 +31,23 @@ export const create = async (request, reply) => {
       message: 'User created successfully',
     });
   } catch (error) {
-    logger.error('Error creating user:', error);
+    logger.error('[users.controller] create error:', error);
     if (error.name === 'ZodError') {
-      return reply.code(400).send({
-        success: false,
-        error: 'Validation failed',
-        details: error.issues,
-      });
+      return reply
+        .code(400)
+        .send({ success: false, error: 'Validation failed', details: error.issues });
+    }
+    if (error.code === 11000) {
+      return reply.code(409).send({ success: false, error: 'Email already exists' });
     }
     return reply.code(400).send({ success: false, error: error.message });
   }
 };
 
 /**
- * Actualizar usuario
- */
-export const updateSettings = async (request, reply) => {
-  try {
-    const { tagId } = request.params;
-    const user = await updateUser(tagId, request.body);
-    return reply.send({
-      success: true,
-      data: user,
-      message: 'User updated successfully',
-    });
-  } catch (error) {
-    logger.error('Error updating user:', error);
-    if (error.name === 'ZodError') {
-      return reply.code(400).send({
-        success: false,
-        error: 'Validation failed',
-        details: error.issues,
-      });
-    }
-    return reply.code(400).send({ success: false, error: error.message });
-  }
-};
-
-/**
- * Obtener miembros del equipo
- */
-export const getMyTeam = async (request, reply) => {
-  try {
-    const { tagId } = request.params;
-    const teamMembers = await getTeamMembers(tagId);
-    return reply.send({
-      success: true,
-      data: teamMembers,
-      count: teamMembers.length,
-    });
-  } catch (error) {
-    logger.error('Error getting team members:', error);
-    return reply.code(400).send({ success: false, error: error.message });
-  }
-};
-
-/**
- * Obtener jerarquía completa
- */
-export const getHierarchy = async (request, reply) => {
-  try {
-    const { tagId } = request.params;
-    const descendants = await getAllDescendants(tagId);
-    return reply.send({
-      success: true,
-      data: descendants,
-      count: descendants.length,
-    });
-  } catch (error) {
-    logger.error('Error getting hierarchy:', error);
-    return reply.code(400).send({ success: false, error: error.message });
-  }
-};
-
-/**
- * Eliminar usuario (soft delete)
+ * DELETE /api/users/:tagId
+ * Soft delete: marca isActive=false. El usuario permanece en la base
+ * para auditoría, pero no aparece en los listados.
  */
 export const remove = async (request, reply) => {
   try {
@@ -139,53 +59,27 @@ export const remove = async (request, reply) => {
       message: 'User deleted successfully',
     });
   } catch (error) {
-    logger.error('Error deleting user:', error);
+    logger.error('[users.controller] remove error:', error);
     return reply.code(400).send({ success: false, error: error.message });
   }
 };
 
 /**
- * Mover usuario en la jerarquía
+ * GET /api/users/by-id/:id
+ * Obtiene un usuario por su _id de Mongo (útil para resolver referencias).
  */
-export const moveUser = async (request, reply) => {
+export const getById = async (request, reply) => {
   try {
-    const { tagId } = request.params;
-    const { newParentTagId } = request.body;
-    const user = await moveUserToNewHierarchy(tagId, newParentTagId);
-    return reply.send({
-      success: true,
-      data: user,
-      message: 'User moved successfully',
-    });
-  } catch (error) {
-    logger.error('Error moving user:', error);
-    return reply.code(400).send({ success: false, error: error.message });
-  }
-};
-
-/**
- * Crear múltiples usuarios en batch
- */
-export const createBatch = async (request, reply) => {
-  try {
-    const { users } = request.body;
-
-    if (!Array.isArray(users) || users.length === 0) {
-      return reply.code(400).send({
-        success: false,
-        error: 'Users array is required and must not be empty',
-      });
+    const user = await User.findById(request.params.id).lean();
+    if (!user) {
+      return reply.code(404).send({ success: false, error: 'User not found' });
     }
-
-    const createdUsers = await createUsersInBatch(users);
-    return reply.code(201).send({
-      success: true,
-      data: createdUsers,
-      count: createdUsers.length,
-      message: `${createdUsers.length} users created successfully`,
-    });
+    return reply.send({ success: true, data: user });
   } catch (error) {
-    logger.error('Error creating users in batch:', error);
-    return reply.code(400).send({ success: false, error: error.message });
+    if (error.name === 'CastError') {
+      return reply.code(400).send({ success: false, error: 'Invalid ObjectId' });
+    }
+    logger.error('[users.controller] getById error:', error);
+    return reply.code(500).send({ success: false, error: 'Internal server error' });
   }
 };

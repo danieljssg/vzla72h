@@ -9,6 +9,7 @@ import {
   deleteCarrier,
   getCarrierById,
   listCarriers,
+  nearCarriers,
   updateCarrier,
   updateCarrierStatus,
 } from './carrier.controller.js';
@@ -18,6 +19,7 @@ const readCache = cachePreHandler(PUBLIC_CACHE_TTL);
 
 export default async function carrierRoutes(app) {
   app.get('/', { preHandler: readCache }, listCarriers);
+  app.get('/near', nearCarriers);
   app.get('/:id', getCarrierById);
   app.post('/', { preHandler: app.validateBody(createCarrierSchema) }, createCarrier);
   app.put('/:id', { preHandler: app.validateBody(updateCarrierSchema) }, updateCarrier);

@@ -28,17 +28,11 @@ const supplyCenterSchema = new Schema(
       maxlength: 120,
       index: true,
     },
-    managerId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-      index: true,
-    },
     phone: {
       type: String,
-      required: true,
       trim: true,
       maxlength: 30,
+      default: null,
     },
     location: { type: LocationSchema, required: true },
     isActive: {
@@ -52,6 +46,7 @@ const supplyCenterSchema = new Schema(
   },
 );
 
+supplyCenterSchema.index({ location: '2dsphere' });
 supplyCenterSchema.index({ 'location.state': 1, 'location.city': 1 });
 
 export default model('SupplyCenter', supplyCenterSchema);

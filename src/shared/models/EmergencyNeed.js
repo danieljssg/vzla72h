@@ -37,6 +37,10 @@ const emergencyNeedSchema = new Schema(
       default: false,
       index: true,
     },
+    location: {
+      type: { type: String, enum: ['Point'], default: 'Point' },
+      coordinates: { type: [Number], default: [0, 0] },
+    },
   },
   {
     timestamps: true,
@@ -44,6 +48,7 @@ const emergencyNeedSchema = new Schema(
   },
 );
 
+emergencyNeedSchema.index({ location: '2dsphere' });
 emergencyNeedSchema.index({ zone: 'text', description: 'text' }, { name: 'need_search_text_idx' });
 emergencyNeedSchema.index({ isResolved: 1, createdAt: -1 });
 emergencyNeedSchema.index({ category: 1, isResolved: 1 });

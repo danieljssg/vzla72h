@@ -1,5 +1,8 @@
 import logger from '../../config/logger.js';
+import Inventory from '../../shared/models/Inventory.js';
+import Item from '../../shared/models/Item.js';
 import SupplyCenter from '../../shared/models/SupplyCenter.js';
+import { fromGeoPoint, parseNearQuery, toGeoPoint } from '../../utils/geo.js';
 
 export const listSupplyCenters = async (request, reply) => {
   try {
@@ -53,7 +56,18 @@ export const getSupplyCenterById = async (request, reply) => {
 
 export const createSupplyCenter = async (request, reply) => {
   try {
-    const center = await SupplyCenter.create(request.body);
+    const body = { ...request.body };
+    if (body.location) {
+      const point = toGeoPoint({
+        lat: body.location.lat,
+        lng: body.location.lng,
+      });
+      if (!point) {
+        return reply.code(400).send({ success: false, error: 'Invalid location lat/lng' });
+      }
+      body.location.coordinates = point;
+    }
+    const center = await SupplyCenter.create(body);
     return reply.code(201).send({ success: true, data: center });
   } catch (error) {
     if (error.name === 'ValidationError') {
@@ -71,9 +85,20 @@ export const createSupplyCenter = async (request, reply) => {
 
 export const updateSupplyCenter = async (request, reply) => {
   try {
+    const update = { ...request.body };
+    if (update.location) {
+      const point = toGeoPoint({
+        lat: update.location.lat,
+        lng: update.location.lng,
+      });
+      if (!point) {
+        return reply.code(400).send({ success: false, error: 'Invalid location lat/lng' });
+      }
+      update.location.coordinates = point;
+    }
     const center = await SupplyCenter.findByIdAndUpdate(
       request.params.id,
-      { $set: request.body },
+      { $set: update },
       { new: true, runValidators: true },
     ).lean();
     if (!center) {
@@ -112,6 +137,155 @@ export const deleteSupplyCenter = async (request, reply) => {
       return reply.code(400).send({ success: false, error: 'Invalid ObjectId' });
     }
     logger.error('[supply-centers.controller] deleteSupplyCenter error:', error);
+    return reply.code(500).send({ success: false, error: 'Internal server error' });
+  }
+};
+
+/* ========================================================================
+   Búsqueda por cercanía + búsqueda de items
+   ======================================================================== */
+
+/**
+ * GET /api/supply-centers/near?lat=X&lng=Y&maxDistance=5000
+ * Devuelve centros ordenados del más cercano al más lejano.
+ */
+export const nearSupplyCenters = async (request, reply) => {
+  try {
+    let coords;
+    try {
+      coords = parseNearQuery(request.query);
+    } catch (e) {
+      return reply.code(400).send({ success: false, error: e.message });
+    }
+    if (!coords) {
+      return reply.code(400).send({ success: false, error: 'lat and lng are required' });
+    }
+
+    const limit = Math.min(Math.max(parseInt(request.query.limit, 10) || 50, 1), 200);
+
+    const results = await SupplyCenter.aggregate([
+      {
+        $geoNear: {
+          near: { type: 'Point', coordinates: [coords.lng, coords.lat] },
+          distanceField: 'distanceMeters',
+          maxDistance: coords.maxDistance,
+          spherical: true,
+          query: { isActive: true },
+        },
+      },
+      { $limit: limit },
+    ]);
+
+    return reply.code(200).send({
+      success: true,
+      data: results.map((r) => ({
+        ...r,
+        location: {
+          ...r.location,
+          lat: fromGeoPoint(r.location)?.lat,
+          lng: fromGeoPoint(r.location)?.lng,
+        },
+      })),
+      origin: { lat: coords.lat, lng: coords.lng },
+      maxDistance: coords.maxDistance,
+      count: results.length,
+    });
+  } catch (error) {
+    logger.error('[supply-centers.controller] nearSupplyCenters error:', error);
+    return reply.code(500).send({ success: false, error: 'Internal server error' });
+  }
+};
+
+/**
+ * GET /api/supply-centers/search?q=alginato&lat=X&lng=Y
+ * Busca items por nombre, encuentra los inventarios que los contienen
+ * y devuelve los centros ordenados del más cercano al más lejano
+ * (si se proporcionó lat/lng).
+ */
+export const searchSupplyCentersByItem = async (request, reply) => {
+  try {
+    const q = typeof request.query.q === 'string' ? request.query.q.trim() : '';
+    if (q.length < 2) {
+      return reply.code(400).send({ success: false, error: 'Query "q" must be at least 2 chars' });
+    }
+
+    const limit = Math.min(Math.max(parseInt(request.query.limit, 10) || 50, 1), 200);
+
+    // 1) Buscar items que coincidan
+    const safe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const items = await Item.find({
+      $or: [
+        { name: { $regex: safe, $options: 'i' } },
+        { category: { $regex: safe, $options: 'i' } },
+      ],
+    })
+      .select('_id name category unit')
+      .lean();
+    const itemIds = items.map((it) => it._id);
+
+    if (itemIds.length === 0) {
+      return reply.code(200).send({ success: true, data: [], query: q, count: 0 });
+    }
+
+    // 2) Encontrar inventarios con esos items
+    const inventories = await Inventory.find({ 'stocks.item': { $in: itemIds } })
+      .select('supplyCenter stocks')
+      .lean();
+    const centerIds = [...new Set(inventories.map((inv) => String(inv.supplyCenter)))];
+
+    if (centerIds.length === 0) {
+      return reply.code(200).send({ success: true, data: [], query: q, count: 0 });
+    }
+
+    // 3) Traer los centros
+    const itemIdSet = new Set(itemIds.map((id) => String(id)));
+    const centerBySupplyCenter = new Map(inventories.map((inv) => [String(inv.supplyCenter), inv]));
+
+    let centerQuery = SupplyCenter.find({ _id: { $in: centerIds }, isActive: true });
+    let near = null;
+    try {
+      near = parseNearQuery(request.query);
+    } catch (e) {
+      return reply.code(400).send({ success: false, error: e.message });
+    }
+
+    let centers = await centerQuery.lean();
+    centers = centers.map((c) => {
+      const inv = centerBySupplyCenter.get(String(c._id));
+      const matchedStocks = (inv?.stocks || []).filter((s) => itemIdSet.has(String(s.item)));
+      const matchedItems = matchedStocks
+        .map((s) => items.find((it) => String(it._id) === String(s.item)))
+        .filter(Boolean);
+      return { ...c, matchedStocks, matchedItems };
+    });
+
+    // 4) Ordenar por distancia si hay coords
+    if (near) {
+      centers = centers
+        .map((c) => {
+          const geo = fromGeoPoint(c.location);
+          if (!geo) return { ...c, distanceMeters: null };
+          const dLat = (geo.lat - near.lat) * 111000;
+          const dLng = (geo.lng - near.lng) * 111000 * Math.cos((near.lat * Math.PI) / 180);
+          const dist = Math.sqrt(dLat * dLat + dLng * dLng);
+          return { ...c, distanceMeters: Math.round(dist) };
+        })
+        .sort((a, b) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity));
+    } else {
+      centers.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    centers = centers.slice(0, limit);
+
+    return reply.code(200).send({
+      success: true,
+      data: centers,
+      query: q,
+      origin: near ? { lat: near.lat, lng: near.lng } : null,
+      count: centers.length,
+    });
+  } catch (error) {
+    logger.error('[supply-centers.controller] searchSupplyCentersByItem error:', error);
     return reply.code(500).send({ success: false, error: 'Internal server error' });
   }
 };
