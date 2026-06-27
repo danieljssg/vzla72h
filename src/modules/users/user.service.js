@@ -11,12 +11,10 @@ export const createNewUser = async (userData, modifierId = null) => {
     zone = 'n/a',
     parentTagId,
     profilePicture,
-    oAuthId,
-    oAuthProvider,
   } = userData;
 
-  // Verificar campos únicos
-  await User.checkUniqueFields({ email, oAuthId });
+  // Verificar email único
+  await User.checkUniqueFields({ email });
 
   // Prefijo genérico USR para todos los usuarios — el rol no define el tagId
   const tagId = await getNextTagId('user_tags', 'USR');
@@ -32,23 +30,16 @@ export const createNewUser = async (userData, modifierId = null) => {
     }
   }
 
-  if (userData.password) {
-    userData.password = await User.encryptPassword(userData.password);
-  }
-
   const user = await User.create({
     name,
     lastName,
     email,
-    password: userData.password,
     role,
     zone,
     tagId,
     parentTagId,
     path,
     profilePicture,
-    oAuthId,
-    oAuthProvider,
   });
 
   if (modifierId) {
@@ -137,10 +128,6 @@ export const updateUser = async (tagId, updateData, modifierId = null) => {
       ],
       { updatePipeline: true },
     );
-  }
-
-  if (updateData.password) {
-    updateData.password = await User.encryptPassword(updateData.password);
   }
 
   const updatedUser = await User.findOneAndUpdate({ tagId }, updateData, {

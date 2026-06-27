@@ -1,20 +1,24 @@
 const corsConfig = {
-  origin: (origin, callback) => {
+  origin: (origin, cb) => {
     if (process.env.NODE_ENV === 'development') {
-      return callback(null, true);
+      return cb(null, true);
     }
 
-    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map((o) => o.trim()) || [];
+    const allowedOrigins =
+      process.env.ALLOWED_ORIGINS?.split(',')
+        .map((o) => o.trim())
+        .filter(Boolean) || [];
 
     if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
+      cb(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      cb(new Error('Not allowed by CORS'), false);
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'x-csrf-token'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'x-refresh'],
+  exposedHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
 };
 
 export default corsConfig;

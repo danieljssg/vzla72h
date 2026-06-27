@@ -1,8 +1,4 @@
-import { Router } from 'express';
-import {
-  validateRegister,
-  validateUpdateUser,
-} from '../../api/middlewares/validationMiddleware.js';
+import { createUserSchema, updateUserSchema } from '../../utils/validations/schemas/userSchema.js';
 import {
   create,
   createBatch,
@@ -15,22 +11,20 @@ import {
   updateSettings,
 } from './user.controller.js';
 
-const router = Router();
+export default async function userRoutes(app) {
+  app.get('/', getAllUsers);
 
-router.get('/', getAllUsers);
+  // CRUD de usuarios
+  app.get('/:tagId', getProfile);
+  app.post('/', { preHandler: app.validateBody(createUserSchema) }, create);
+  app.put('/:tagId', { preHandler: app.validateBody(updateUserSchema) }, updateSettings);
+  app.delete('/:tagId', remove);
 
-// CRUD de usuarios
-router.get('/:tagId', getProfile);
-router.post('/', validateRegister, create);
-router.put('/:tagId', validateUpdateUser, updateSettings);
-router.delete('/:tagId', remove);
+  // Jerarquía
+  app.get('/:tagId/team', getMyTeam);
+  app.get('/:tagId/hierarchy', getHierarchy);
+  app.patch('/:tagId/move', moveUser);
 
-// Jerarquía
-router.get('/:tagId/team', getMyTeam);
-router.get('/:tagId/hierarchy', getHierarchy);
-router.patch('/:tagId/move', moveUser);
-
-// Batch operations
-router.post('/batch/create', createBatch);
-
-export default router;
+  // Batch operations
+  app.post('/batch/create', createBatch);
+}

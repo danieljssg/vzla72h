@@ -1,15 +1,14 @@
-import { Router } from 'express';
-import { cacheMiddleware } from '../../api/middlewares/cache.js';
+import { cachePreHandler } from '../../plugins/cache.js';
 import { createItemSchema, updateItemSchema } from '../../utils/validations/schemas/itemSchema.js';
-import zodValidate from '../../utils/validations/zodValidator.js';
 import { createItem, deleteItem, getItemById, listItems, updateItem } from './item.controller.js';
 
-const router = Router();
+const PUBLIC_CACHE_TTL = 300;
+const readCache = cachePreHandler(PUBLIC_CACHE_TTL);
 
-router.get('/', [cacheMiddleware(300)], listItems);
-router.get('/:id', getItemById);
-router.post('/', zodValidate(createItemSchema), createItem);
-router.put('/:id', zodValidate(updateItemSchema), updateItem);
-router.delete('/:id', deleteItem);
-
-export default router;
+export default async function itemRoutes(app) {
+  app.get('/', { preHandler: readCache }, listItems);
+  app.get('/:id', getItemById);
+  app.post('/', { preHandler: app.validateBody(createItemSchema) }, createItem);
+  app.put('/:id', { preHandler: app.validateBody(updateItemSchema) }, updateItem);
+  app.delete('/:id', deleteItem);
+}

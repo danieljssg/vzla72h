@@ -1,0 +1,788 @@
+<!doctype html>
+<html lang="es">
+
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Venezuela Route 72 — API Tester</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            body {
+                font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            }
+
+            .method-GET {
+                background: #1e40af;
+            }
+
+            .method-POST {
+                background: #15803d;
+            }
+
+            .method-PUT {
+                background: #b45309;
+            }
+
+            .method-PATCH {
+                background: #7c3aed;
+            }
+
+            .method-DELETE {
+                background: #b91c1c;
+            }
+
+            pre {
+                white-space: pre-wrap;
+                word-break: break-word;
+            }
+
+            .scrollbar-thin::-webkit-scrollbar {
+                width: 6px;
+                height: 6px;
+            }
+
+            .scrollbar-thin::-webkit-scrollbar-thumb {
+                background: #475569;
+                border-radius: 4px;
+            }
+
+            .scrollbar-thin::-webkit-scrollbar-track {
+                background: #0f172a;
+            }
+
+            html {
+                scroll-behavior: smooth;
+            }
+
+            details>summary {
+                list-style: none;
+                cursor: pointer;
+            }
+
+            details>summary::-webkit-details-marker {
+                display: none;
+            }
+
+            .sidebar-link.active {
+                background: #1e293b;
+                color: #f1f5f9;
+            }
+
+            .sidebar-group[open] .sidebar-chevron {
+                transform: rotate(90deg);
+            }
+
+            .sidebar-chevron {
+                transition: transform .15s ease;
+            }
+        </style>
+    </head>
+
+    <body class="bg-slate-950 text-slate-100 min-h-screen">
+
+        <!-- Header -->
+        <header class="bg-slate-900 border-b border-slate-800 px-6 py-3 flex items-center gap-4 sticky top-0 z-30">
+            <div class="flex items-center gap-2">
+                <span class="text-xl">🇻🇪</span>
+                <h1 class="font-semibold text-lg">Venezuela Route 72</h1>
+                <span class="text-xs text-slate-400 hidden sm:inline">— API Tester</span>
+            </div>
+            <div class="flex-1 flex items-center gap-2 max-w-2xl">
+                <label class="text-xs text-slate-400">Base URL:</label>
+                <input id="baseUrl" type="text"
+                    class="flex-1 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm font-mono focus:outline-none focus:border-blue-500"
+                    value="http://localhost:3000" />
+                <button id="saveBaseUrl"
+                    class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm">Guardar</button>
+            </div>
+            <div class="text-xs text-slate-400 hidden md:block">
+                <span id="endpointCount">0</span> endpoints
+            </div>
+        </header>
+
+        <div class="flex">
+
+            <!-- Sidebar -->
+            <aside
+                class="w-64 bg-slate-900 border-r border-slate-800 h-[calc(100vh-57px)] sticky top-[57px] overflow-y-auto scrollbar-thin shrink-0">
+                <nav id="sidebar" class="p-3 space-y-1 text-sm"></nav>
+            </aside>
+
+            <!-- Main -->
+            <main class="flex-1 p-6 space-y-4 min-w-0">
+
+                <!-- Saved IDs bar -->
+                <section class="bg-slate-900 border border-slate-800 rounded-lg p-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="font-semibold text-sm">IDs guardados</h2>
+                        <button id="clearIds" class="text-xs text-red-400 hover:text-red-300">Limpiar todo</button>
+                    </div>
+                    <div id="savedIds" class="flex flex-wrap gap-2 text-xs"></div>
+                    <p class="text-xs text-slate-500 mt-2">Los IDs creados se autollenan en los formularios. Click para
+                        copiar.</p>
+                </section>
+
+                <!-- Endpoints -->
+                <section id="endpoints" class="space-y-6"></section>
+            </main>
+        </div>
+
+        <script>
+            /* ========================================================================
+               Configuración: todos los endpoints de la API
+               ======================================================================== */
+            const ENDPOINTS = [
+                /* ---------------- Items ---------------- */
+                {
+                    group: 'Items', icon: '📦',
+                    items: [
+                        { id: 'items-list', name: 'Listar items', method: 'GET', path: '/api/items/' },
+                        {
+                            id: 'items-create', name: 'Crear item', method: 'POST', path: '/api/items/',
+                            fields: [
+                                { name: 'name', label: 'Nombre', type: 'text', value: 'Agua potable' },
+                                { name: 'category', label: 'Categoría', type: 'select', options: ['food', 'health', 'hygiene', 'tools', 'clothing', 'others'], value: 'food' },
+                                { name: 'unit', label: 'Unidad', type: 'text', value: 'boxes' },
+                            ]
+                        },
+                        {
+                            id: 'items-get', name: 'Obtener item', method: 'GET', path: '/api/items/:id',
+                            fields: [{ name: 'id', label: 'id', type: 'text', fromSaved: 'itemId' }]
+                        },
+                        {
+                            id: 'items-update', name: 'Actualizar item', method: 'PUT', path: '/api/items/:id',
+                            fields: [
+                                { name: 'id', label: 'id', type: 'text', fromSaved: 'itemId' },
+                                { name: 'name', label: 'Nombre', type: 'text', value: 'Agua potable 1L' },
+                                { name: 'category', label: 'Categoría', type: 'select', options: ['food', 'health', 'hygiene', 'tools', 'clothing', 'others'], value: 'food' },
+                                { name: 'unit', label: 'Unidad', type: 'text', value: 'liters' },
+                            ]
+                        },
+                        {
+                            id: 'items-delete', name: 'Eliminar item', method: 'DELETE', path: '/api/items/:id',
+                            fields: [{ name: 'id', label: 'id', type: 'text', fromSaved: 'itemId' }]
+                        },
+                    ],
+                },
+
+                /* ---------------- Supply Centers ---------------- */
+                {
+                    group: 'SupplyCenters', icon: '🏢',
+                    items: [
+                        { id: 'sc-list', name: 'Listar centros', method: 'GET', path: '/api/supply-centers/' },
+                        {
+                            id: 'sc-create', name: 'Crear centro', method: 'POST', path: '/api/supply-centers/',
+                            fields: [
+                                { name: 'name', label: 'Nombre', type: 'text', value: 'Centro Logística Caracas' },
+                                { name: 'managerId', label: 'Manager (ObjectId externo)', type: 'text', value: '' },
+                                { name: 'phone', label: 'Teléfono', type: 'text', value: '+584141234567' },
+                                { name: 'location.state', label: 'Estado', type: 'text', value: 'Distrito Capital' },
+                                { name: 'location.city', label: 'Ciudad', type: 'text', value: 'Caracas' },
+                                { name: 'location.parish', label: 'Parroquia', type: 'text', value: 'Chacao' },
+                                { name: 'location.address', label: 'Dirección', type: 'text', value: 'Av. Principal, Edif. X' },
+                                { name: 'location.coordinates.lat', label: 'Lat', type: 'number', value: 10.498 },
+                                { name: 'location.coordinates.lng', label: 'Lng', type: 'number', value: -66.853 },
+                                { name: 'isActive', label: 'Activo', type: 'checkbox', value: true },
+                            ]
+                        },
+                        {
+                            id: 'sc-get', name: 'Obtener centro', method: 'GET', path: '/api/supply-centers/:id',
+                            fields: [{ name: 'id', label: 'id', type: 'text', fromSaved: 'supplyCenterId' }]
+                        },
+                        {
+                            id: 'sc-update', name: 'Actualizar centro', method: 'PUT', path: '/api/supply-centers/:id',
+                            fields: [
+                                { name: 'id', label: 'id', type: 'text', fromSaved: 'supplyCenterId' },
+                                { name: 'name', label: 'Nombre', type: 'text', value: 'Centro Caracas' },
+                                { name: 'phone', label: 'Teléfono', type: 'text', value: '+584141234567' },
+                                { name: 'isActive', label: 'Activo', type: 'checkbox', value: true },
+                            ]
+                        },
+                        {
+                            id: 'sc-delete', name: 'Eliminar centro', method: 'DELETE', path: '/api/supply-centers/:id',
+                            fields: [{ name: 'id', label: 'id', type: 'text', fromSaved: 'supplyCenterId' }]
+                        },
+                    ],
+                },
+
+                /* ---------------- Carriers ---------------- */
+                {
+                    group: 'Carriers', icon: '🚚',
+                    items: [
+                        { id: 'carriers-list', name: 'Listar transportistas', method: 'GET', path: '/api/carriers/' },
+                        {
+                            id: 'carriers-create', name: 'Crear transportista', method: 'POST', path: '/api/carriers/',
+                            fields: [
+                                { name: 'licensePlate', label: 'Placa', type: 'text', value: 'AB123CD' },
+                                { name: 'vehicleType', label: 'Tipo de vehículo', type: 'select', options: ['motorcycle', 'car', 'pickup', 'truck', 'trailer', 'heavy_machinery'], value: 'truck' },
+                                { name: 'model', label: 'Modelo', type: 'text', value: 'Ford F-150' },
+                                { name: 'driver.firstName', label: 'Conductor nombre', type: 'text', value: 'José' },
+                                { name: 'driver.lastName', label: 'Conductor apellido', type: 'text', value: 'Hernández' },
+                                { name: 'driver.idNumber', label: 'Cédula', type: 'text', value: 'V12345678' },
+                                { name: 'driver.phone', label: 'Teléfono', type: 'text', value: '+584141112222' },
+                                { name: 'status', label: 'Estado', type: 'select', options: ['available', 'assigned', 'inactive'], value: 'available' },
+                            ]
+                        },
+                        {
+                            id: 'carriers-get', name: 'Obtener transportista', method: 'GET', path: '/api/carriers/:id',
+                            fields: [{ name: 'id', label: 'id', type: 'text', fromSaved: 'carrierId' }]
+                        },
+                        {
+                            id: 'carriers-update', name: 'Actualizar transportista', method: 'PUT', path: '/api/carriers/:id',
+                            fields: [
+                                { name: 'id', label: 'id', type: 'text', fromSaved: 'carrierId' },
+                                { name: 'licensePlate', label: 'Placa', type: 'text', value: 'AB123CD' },
+                                { name: 'model', label: 'Modelo', type: 'text', value: 'Ford F-150 2024' },
+                            ]
+                        },
+                        {
+                            id: 'carriers-status', name: 'Cambiar status', method: 'PATCH', path: '/api/carriers/:id/status',
+                            fields: [
+                                { name: 'id', label: 'id', type: 'text', fromSaved: 'carrierId' },
+                                { name: 'status', label: 'Estado', type: 'select', options: ['available', 'assigned', 'inactive'], value: 'assigned' },
+                            ]
+                        },
+                        {
+                            id: 'carriers-delete', name: 'Eliminar transportista', method: 'DELETE', path: '/api/carriers/:id',
+                            fields: [{ name: 'id', label: 'id', type: 'text', fromSaved: 'carrierId' }]
+                        },
+                    ],
+                },
+
+                /* ---------------- Inventory ---------------- */
+                {
+                    group: 'Inventory', icon: '📊',
+                    items: [
+                        { id: 'inv-list', name: 'Listar inventarios', method: 'GET', path: '/api/inventory/' },
+                        {
+                            id: 'inv-by-center', name: 'Por centro de suministro', method: 'GET', path: '/api/inventory/by-center/:supplyCenterId',
+                            fields: [{ name: 'supplyCenterId', label: 'supplyCenterId', type: 'text', fromSaved: 'supplyCenterId' }]
+                        },
+                        {
+                            id: 'inv-get', name: 'Obtener inventario', method: 'GET', path: '/api/inventory/:id',
+                            fields: [{ name: 'id', label: 'id', type: 'text', fromSaved: 'inventoryId' }]
+                        },
+                        {
+                            id: 'inv-create', name: 'Crear inventario', method: 'POST', path: '/api/inventory/',
+                            fields: [
+                                { name: 'supplyCenter', label: 'supplyCenter (ObjectId)', type: 'text', fromSaved: 'supplyCenterId' },
+                                {
+                                    name: 'stocks', label: 'stocks (JSON array)', type: 'textarea', parseJson: true,
+                                    placeholder: '[\n  { "item": "<ITEM_ID>", "quantity": 100 }\n]',
+                                    value: '[\n  { "item": "REEMPLAZAR_CON_ITEM_ID", "quantity": 100 }\n]'
+                                },
+                            ]
+                        },
+                        {
+                            id: 'inv-update', name: 'Actualizar stocks', method: 'PUT', path: '/api/inventory/:id',
+                            fields: [
+                                { name: 'id', label: 'id', type: 'text', fromSaved: 'inventoryId' },
+                                {
+                                    name: 'stocks', label: 'stocks (JSON array)', type: 'textarea', parseJson: true,
+                                    placeholder: '[\n  { "item": "<ITEM_ID>", "quantity": 150 }\n]',
+                                    value: '[\n  { "item": "REEMPLAZAR_CON_ITEM_ID", "quantity": 150 }\n]'
+                                },
+                            ]
+                        },
+                        {
+                            id: 'inv-adjust', name: 'Ajustar stock (delta)', method: 'PATCH', path: '/api/inventory/:id/adjust',
+                            fields: [
+                                { name: 'id', label: 'id', type: 'text', fromSaved: 'inventoryId' },
+                                { name: 'item', label: 'item (ObjectId)', type: 'text', fromSaved: 'itemId' },
+                                { name: 'delta', label: 'delta', type: 'number', value: -10 },
+                                { name: 'reason', label: 'motivo', type: 'text', value: 'Entrega a comunidad' },
+                            ]
+                        },
+                        {
+                            id: 'inv-delete', name: 'Eliminar inventario', method: 'DELETE', path: '/api/inventory/:id',
+                            fields: [{ name: 'id', label: 'id', type: 'text', fromSaved: 'inventoryId' }]
+                        },
+                    ],
+                },
+
+                /* ---------------- Dispatches ---------------- */
+                {
+                    group: 'Dispatches', icon: '🚛',
+                    items: [
+                        {
+                            id: 'disp-create', name: 'Crear despacho', method: 'POST', path: '/api/dispatches/',
+                            fields: [
+                                { name: 'licensePlate', label: 'licensePlate', type: 'text', fromSaved: 'carrierPlate', value: 'AB123CD' },
+                                { name: 'driverName', label: 'driverName', type: 'text', value: 'José Hernández' },
+                                { name: 'driverPhone', label: 'driverPhone', type: 'text', value: '+584141112222' },
+                                { name: 'origin', label: 'origin (ObjectId)', type: 'text', fromSaved: 'supplyCenterId' },
+                                { name: 'originName', label: 'originName', type: 'text', value: 'Centro Caracas' },
+                                {
+                                    name: 'emptyPhotoBase64', label: 'emptyPhotoBase64 (data URL)', type: 'textarea',
+                                    placeholder: 'data:image/png;base64,iVBORw0KGgo...',
+                                    value: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+                                },
+                                {
+                                    name: 'loadedItems', label: 'loadedItems (JSON array)', type: 'textarea', parseJson: true,
+                                    placeholder: '[\n  { "itemName": "Agua potable 1L", "quantity": 50, "unit": "boxes" }\n]',
+                                    value: '[\n  { "itemName": "Agua potable 1L", "quantity": 50, "unit": "boxes" }\n]'
+                                },
+                                { name: 'destination.state', label: 'Destino estado', type: 'text', value: 'Miranda' },
+                                { name: 'destination.city', label: 'Destino ciudad', type: 'text', value: 'Guatire' },
+                                { name: 'destination.parish', label: 'Destino parroquia', type: 'text', value: 'Guatire' },
+                                { name: 'destination.specificLocation', label: 'Destino específico', type: 'text', value: 'Comunidad El Encanto' },
+                            ]
+                        },
+                        { id: 'disp-list', name: 'Listar despachos', method: 'GET', path: '/api/dispatches/' },
+                        {
+                            id: 'disp-lookup', name: 'Buscar por placa / tripCode', method: 'GET', path: '/api/dispatches/lookup',
+                            fields: [
+                                { name: 'licensePlate', label: 'licensePlate', type: 'text', value: 'AB123CD' },
+                                { name: 'tripCode', label: 'tripCode', type: 'text', value: '' },
+                            ]
+                        },
+                    ],
+                },
+
+                /* ---------------- Emergency Needs ---------------- */
+                {
+                    group: 'EmergencyNeeds', icon: '🆘',
+                    items: [
+                        {
+                            id: 'need-create', name: 'Reportar necesidad (audio opcional)', method: 'POST', path: '/api/emergency-needs/',
+                            fields: [
+                                { name: 'zone', label: 'Zona', type: 'text', value: 'Barrio El Carmen, Petare' },
+                                { name: 'category', label: 'Categoría', type: 'select', options: ['food', 'clothing', 'medicines', 'first_aid', 'tools', 'other'], value: 'food' },
+                                { name: 'description', label: 'Descripción', type: 'textarea', value: 'Familias sin acceso a alimentos desde hace 3 días.' },
+                                { name: 'reportedBy', label: 'Reportado por', type: 'text', value: 'Líder comunitario Pedro Lugo' },
+                                { name: 'audio', label: 'Audio (file, opcional)', type: 'file' },
+                            ]
+                        },
+                        { id: 'need-list', name: 'Listar necesidades', method: 'GET', path: '/api/emergency-needs/' },
+                        { id: 'need-active', name: 'Activas (público)', method: 'GET', path: '/api/emergency-needs/public/active' },
+                        {
+                            id: 'need-get', name: 'Obtener necesidad', method: 'GET', path: '/api/emergency-needs/:id',
+                            fields: [{ name: 'id', label: 'id', type: 'text', fromSaved: 'needId' }]
+                        },
+                        {
+                            id: 'need-update', name: 'Actualizar necesidad', method: 'PUT', path: '/api/emergency-needs/:id',
+                            fields: [
+                                { name: 'id', label: 'id', type: 'text', fromSaved: 'needId' },
+                                { name: 'zone', label: 'Zona', type: 'text', value: 'Barrio El Carmen, Petare' },
+                                { name: 'category', label: 'Categoría', type: 'select', options: ['food', 'clothing', 'medicines', 'first_aid', 'tools', 'other'], value: 'food' },
+                                { name: 'description', label: 'Descripción', type: 'textarea', value: 'Actualizado' },
+                            ]
+                        },
+                        {
+                            id: 'need-resolve', name: 'Marcar resuelta', method: 'PATCH', path: '/api/emergency-needs/:id/resolve',
+                            fields: [{ name: 'id', label: 'id', type: 'text', fromSaved: 'needId' }]
+                        },
+                        {
+                            id: 'need-delete', name: 'Eliminar necesidad', method: 'DELETE', path: '/api/emergency-needs/:id',
+                            fields: [{ name: 'id', label: 'id', type: 'text', fromSaved: 'needId' }]
+                        },
+                    ],
+                },
+            ];
+
+            /* ========================================================================
+               Estado y utilidades
+               ======================================================================== */
+            const STORAGE_KEY = 'vr72-tester';
+            const state = {
+                baseUrl: localStorage.getItem(`${STORAGE_KEY}-base`) || 'http://localhost:3000',
+                savedIds: JSON.parse(localStorage.getItem(`${STORAGE_KEY}-ids`) || '{}'),
+            };
+
+            const saveState = () => {
+                localStorage.setItem(`${STORAGE_KEY}-base`, state.baseUrl);
+                localStorage.setItem(`${STORAGE_KEY}-ids`, JSON.stringify(state.savedIds));
+            };
+
+            const methodColor = (m) => `method-${m}`;
+
+            /* Construye el path sustituyendo :paramName por el valor del input cuyo
+               data-path-key coincide. Si el valor está vacío, lo deja como string vacío. */
+            const buildPath = (template, formEl) => {
+                return template.replace(/:([a-zA-Z]+)/g, (_, k) => {
+                    const input = formEl.querySelector(`[data-path-key="${k}"]`);
+                    return input ? encodeURIComponent(input.value.trim()) : '';
+                });
+            };
+
+            /* Asigna obj.a.b.c = value creando objetos intermedios */
+            const setNestedValue = (obj, path, value) => {
+                const keys = path.split('.');
+                let cur = obj;
+                for (let i = 0; i < keys.length - 1; i++) {
+                    if (cur[keys[i]] == null || typeof cur[keys[i]] !== 'object') cur[keys[i]] = {};
+                    cur = cur[keys[i]];
+                }
+                cur[keys[keys.length - 1]] = value;
+            };
+
+            /* Construye el body a enviar:
+               - Campos con parseJson:true se interpretan como JSON
+               - Campos anidados (con '.') se fusionan con setNestedValue
+               - type:file se ignoran (se manejan aparte al construir FormData)
+               - type:checkbox produce boolean */
+            const collectBody = (fields, formEl) => {
+                const body = {};
+                for (const f of fields) {
+                    if (f.type === 'file') continue;
+                    const el = formEl.querySelector(`[name="${f.name}"]`);
+                    if (!el) continue;
+                    const raw = el.type === 'checkbox' ? el.checked : el.value;
+
+                    if (f.parseJson) {
+                        const text = (raw || '').trim();
+                        if (!text) continue;
+                        let parsed;
+                        try { parsed = JSON.parse(text); }
+                        catch (e) { throw new Error(`JSON inválido en "${f.label}": ${e.message}`); }
+                        if (f.name.includes('.')) setNestedValue(body, f.name, parsed);
+                        else body[f.name] = parsed;
+                        continue;
+                    }
+
+                    if (f.name.includes('.')) {
+                        setNestedValue(body, f.name, f.type === 'number' ? Number(raw) : raw);
+                    } else {
+                        body[f.name] = f.type === 'number' ? Number(raw) : raw;
+                    }
+                }
+                return body;
+            };
+
+            /* Captura IDs relevantes de la respuesta para autollenado futuro */
+            const trySaveId = (resp) => {
+                if (!resp || typeof resp !== 'object') return;
+                const data = Array.isArray(resp) ? resp[0]
+                    : resp.data && typeof resp.data === 'object' ? resp.data
+                        : resp;
+                if (!data || typeof data !== 'object') return;
+                if (data._id && data.licensePlate) state.savedIds.carrierId = data._id;
+                if (data.licensePlate && !state.savedIds.carrierPlate) state.savedIds.carrierPlate = data.licensePlate;
+                if (data._id && Array.isArray(data.stocks)) state.savedIds.inventoryId = data._id;
+                if (data._id && data.zone) state.savedIds.needId = data._id;
+                if (data._id && data.coordinates) state.savedIds.supplyCenterId = data._id;
+                if (data._id && data.name && (data.unit || data.category) && !state.savedIds.itemId) {
+                    state.savedIds.itemId = data._id;
+                }
+                saveState();
+                renderSavedIds();
+                autoFillFromSaved();
+            };
+
+            /* ========================================================================
+               Render: Sidebar
+               ======================================================================== */
+            const renderSidebar = () => {
+                const nav = document.getElementById('sidebar');
+                nav.innerHTML = ENDPOINTS.map((group) => `
+        <details class="sidebar-group" open>
+          <summary class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-800 text-slate-200 font-medium">
+            <span class="sidebar-chevron text-slate-500 text-xs">▸</span>
+            <span>${group.icon}</span><span>${group.group}</span>
+            <span class="ml-auto text-xs text-slate-500">${group.items.length}</span>
+          </summary>
+          <ul class="ml-3 mt-1 mb-2 space-y-0.5 border-l border-slate-800 pl-2">
+            ${group.items.map(it => `
+              <li>
+                <a href="#${it.id}" data-link-id="${it.id}"
+                   class="sidebar-link flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800 text-slate-300 text-xs">
+                  <span class="${methodColor(it.method)} text-white text-[10px] font-bold px-1.5 py-0.5 rounded">${it.method}</span>
+                  <span class="truncate">${it.name}</span>
+                </a>
+              </li>`).join('')}
+          </ul>
+        </details>
+      `).join('');
+            };
+
+            /* Resalta el link del sidebar correspondiente al endpoint visible */
+            const setupScrollSpy = () => {
+                const links = document.querySelectorAll('.sidebar-link');
+                const articles = document.querySelectorAll('article[id]');
+                const observer = new IntersectionObserver((entries) => {
+                    for (const e of entries) {
+                        if (e.isIntersecting) {
+                            links.forEach(l => l.classList.remove('active'));
+                            const link = document.querySelector(`.sidebar-link[data-link-id="${e.target.id}"]`);
+                            if (link) link.classList.add('active');
+                        }
+                    }
+                }, { rootMargin: '-30% 0px -60% 0px' });
+                articles.forEach(a => observer.observe(a));
+            };
+
+            /* ========================================================================
+               Render: Saved IDs
+               ======================================================================== */
+            const renderSavedIds = () => {
+                const c = document.getElementById('savedIds');
+                const keys = Object.keys(state.savedIds);
+                if (!keys.length) {
+                    c.innerHTML = '<span class="text-slate-500">— ningún ID guardado todavía —</span>';
+                    return;
+                }
+                c.innerHTML = keys.map(k => `
+        <button data-id-key="${k}"
+          class="saved-id bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded px-2 py-1 font-mono"
+          title="Click para copiar">
+          <span class="text-slate-400">${k}:</span>
+          <span class="text-slate-100">${state.savedIds[k]}</span>
+        </button>`).join('');
+                c.querySelectorAll('.saved-id').forEach(b => {
+                    b.addEventListener('click', () => {
+                        navigator.clipboard.writeText(state.savedIds[b.dataset.idKey]);
+                        b.classList.add('ring-1', 'ring-blue-500');
+                        setTimeout(() => b.classList.remove('ring-1', 'ring-blue-500'), 600);
+                    });
+                });
+            };
+
+            /* ========================================================================
+               Render: Fields / Endpoints
+               ======================================================================== */
+            const escapeAttr = (s) => String(s ?? '')
+                .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+            const fieldHtml = (f) => {
+                const ph = f.label;
+                const pathKey = f.name.split('.')[0];
+                const fromSaved = f.fromSaved ? `data-from-saved="${f.fromSaved}"` : '';
+
+                if (f.type === 'textarea') {
+                    return `<div>
+          <label class="block text-xs text-slate-400 mb-1">${ph}</label>
+          <textarea name="${f.name}" rows="4" data-path-key="${pathKey}" ${fromSaved}
+            placeholder="${escapeAttr(f.placeholder || '')}"
+            class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm font-mono focus:border-blue-500 focus:outline-none">${escapeAttr(f.value || '')}</textarea>
+        </div>`;
+                }
+                if (f.type === 'select') {
+                    return `<div>
+          <label class="block text-xs text-slate-400 mb-1">${ph}</label>
+          <select name="${f.name}" data-path-key="${pathKey}" ${fromSaved}
+            class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm focus:border-blue-500 focus:outline-none">
+            ${f.options.map(o => `<option value="${escapeAttr(o)}" ${o === f.value ? 'selected' : ''}>${o}</option>`).join('')}
+          </select>
+        </div>`;
+                }
+                if (f.type === 'checkbox') {
+                    return `<label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="${f.name}" data-path-key="${pathKey}" ${f.value ? 'checked' : ''}
+            class="rounded bg-slate-800 border-slate-700" />
+          <span class="text-slate-300">${ph}</span>
+        </label>`;
+                }
+                if (f.type === 'file') {
+                    return `<div>
+          <label class="block text-xs text-slate-400 mb-1">${ph}</label>
+          <input type="file" name="${f.name}" data-path-key="${pathKey}"
+            class="w-full text-sm text-slate-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-slate-700 file:text-slate-100 hover:file:bg-slate-600" />
+        </div>`;
+                }
+                const inputType = f.type === 'number' ? 'number' : 'text';
+                return `<div>
+        <label class="block text-xs text-slate-400 mb-1">${ph}</label>
+        <input type="${inputType}" name="${f.name}" data-path-key="${pathKey}" ${fromSaved}
+          value="${escapeAttr(f.value || '')}"
+          placeholder="${escapeAttr(f.placeholder || '')}"
+          class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm font-mono focus:border-blue-500 focus:outline-none" />
+      </div>`;
+            };
+
+            const endpointHtml = (ep) => {
+                const fullPath = ep.path;
+                const fields = ep.fields || [];
+                return `
+        <article id="${ep.id}" class="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden scroll-mt-20">
+          <header class="flex items-center gap-3 px-4 py-3 bg-slate-900 border-b border-slate-800">
+            <span class="${methodColor(ep.method)} text-white text-xs font-bold px-2 py-1 rounded">${ep.method}</span>
+            <code class="text-sm font-mono text-slate-200">${fullPath}</code>
+            <span class="ml-auto text-sm text-slate-400">${ep.name}</span>
+          </header>
+          <div class="p-4">
+            <form data-endpoint="${ep.id}" class="space-y-3">
+              ${fields.length
+                        ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${fields.map(fieldHtml).join('')}</div>`
+                        : '<p class="text-xs text-slate-500">Esta petición no requiere cuerpo.</p>'}
+              <div class="flex items-center gap-2">
+                <button type="submit" data-action="submit"
+                  class="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-1.5 rounded text-sm font-medium">Enviar</button>
+                <button type="button" data-action="reset"
+                  class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded text-sm">Reset</button>
+              </div>
+            </form>
+            <div data-response="${ep.id}" class="mt-4 hidden">
+              <div class="flex items-center gap-2 mb-2 text-xs">
+                <span data-resp-status class="px-2 py-0.5 rounded font-bold"></span>
+                <span data-resp-time class="text-slate-400"></span>
+                <span data-resp-size class="text-slate-400"></span>
+                <button type="button" data-action="copy"
+                  class="ml-auto bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded">Copiar JSON</button>
+              </div>
+              <pre data-resp-body
+                class="bg-slate-950 border border-slate-800 rounded p-3 text-xs text-slate-200 max-h-96 overflow-auto scrollbar-thin"></pre>
+              <details class="mt-2">
+                <summary class="text-xs text-slate-500 hover:text-slate-300">Headers de respuesta</summary>
+                <pre data-resp-headers
+                  class="bg-slate-950 border border-slate-800 rounded p-3 text-xs text-slate-300 mt-1 max-h-40 overflow-auto scrollbar-thin"></pre>
+              </details>
+            </div>
+          </div>
+        </article>`;
+            };
+
+            const renderEndpoints = () => {
+                const root = document.getElementById('endpoints');
+                root.innerHTML = ENDPOINTS.map(g => `
+        <section class="space-y-3">
+          <h2 class="text-lg font-semibold text-slate-200 flex items-center gap-2">
+            <span>${g.icon}</span> ${g.group}
+          </h2>
+          ${g.items.map(endpointHtml).join('')}
+        </section>`).join('');
+                document.getElementById('endpointCount').textContent =
+                    ENDPOINTS.reduce((a, g) => a + g.items.length, 0);
+                autoFillFromSaved();
+                attachFormHandlers();
+                setupScrollSpy();
+            };
+
+            /* ========================================================================
+               Auto-fill: poblar campos con saved IDs
+               ======================================================================== */
+            const autoFillFromSaved = () => {
+                document.querySelectorAll('[data-from-saved]').forEach(input => {
+                    const key = input.dataset.fromSaved;
+                    if (state.savedIds[key] && !input.value) {
+                        input.value = state.savedIds[key];
+                    }
+                });
+            };
+
+            /* ========================================================================
+               Forms: enviar peticiones
+               ======================================================================== */
+            const attachFormHandlers = () => {
+                document.querySelectorAll('form[data-endpoint]').forEach(form => {
+                    const epId = form.dataset.endpoint;
+                    const ep = ENDPOINTS.flatMap(g => g.items).find(i => i.id === epId);
+                    if (!ep) return;
+                    const submitBtn = form.querySelector('[data-action="submit"]');
+
+                    form.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const respBox = document.querySelector(`[data-response="${epId}"]`);
+                        const statusEl = respBox.querySelector('[data-resp-status]');
+                        const timeEl = respBox.querySelector('[data-resp-time]');
+                        const sizeEl = respBox.querySelector('[data-resp-size]');
+                        const bodyEl = respBox.querySelector('[data-resp-body]');
+                        const headersEl = respBox.querySelector('[data-resp-headers]');
+
+                        respBox.classList.remove('hidden');
+                        statusEl.textContent = '…';
+                        statusEl.className = 'px-2 py-0.5 rounded font-bold bg-slate-700';
+                        bodyEl.textContent = 'Enviando…';
+                        headersEl.textContent = '';
+                        timeEl.textContent = '';
+                        sizeEl.textContent = '';
+                        submitBtn.disabled = true;
+                        submitBtn.textContent = 'Enviando…';
+
+                        const t0 = performance.now();
+                        try {
+                            const url = state.baseUrl.replace(/\/$/, '') + buildPath(ep.path, form);
+
+                            let body, headers = {};
+                            if (['POST', 'PUT', 'PATCH'].includes(ep.method)) {
+                                const fileInput = form.querySelector('input[type="file"]');
+                                const hasFile = fileInput && fileInput.files && fileInput.files[0];
+
+                                if (hasFile) {
+                                    const fd = new FormData();
+                                    const json = collectBody(ep.fields, form);
+                                    Object.entries(json).forEach(([k, v]) => {
+                                        fd.append(k, typeof v === 'string' ? v : JSON.stringify(v));
+                                    });
+                                    fd.append('audio', fileInput.files[0]);
+                                    body = fd;
+                                } else {
+                                    const json = collectBody(ep.fields, form);
+                                    body = JSON.stringify(json);
+                                    headers['Content-Type'] = 'application/json';
+                                }
+                            }
+
+                            const res = await fetch(url, { method: ep.method, body, headers });
+                            const dt = performance.now() - t0;
+                            const text = await res.text();
+                            let parsed;
+                            try { parsed = JSON.parse(text); } catch { parsed = text; }
+
+                            timeEl.textContent = `${dt.toFixed(0)} ms`;
+                            sizeEl.textContent = `${(text.length / 1024).toFixed(2)} KB`;
+                            statusEl.textContent = `${res.status} ${res.statusText}`;
+                            statusEl.className = `px-2 py-0.5 rounded font-bold ${res.ok ? 'bg-green-700' : 'bg-red-700'}`;
+                            bodyEl.textContent = typeof parsed === 'string' ? parsed : JSON.stringify(parsed, null, 2);
+
+                            const hdrs = {};
+                            res.headers.forEach((v, k) => { hdrs[k] = v; });
+                            headersEl.textContent = JSON.stringify(hdrs, null, 2);
+
+                            if (res.ok) trySaveId(parsed);
+                        } catch (err) {
+                            const dt = performance.now() - t0;
+                            statusEl.textContent = 'ERROR';
+                            statusEl.className = 'px-2 py-0.5 rounded font-bold bg-red-800';
+                            timeEl.textContent = `${dt.toFixed(0)} ms`;
+                            bodyEl.textContent = `Error: ${err.message}`;
+                            headersEl.textContent = '';
+                        } finally {
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = 'Enviar';
+                        }
+                    });
+
+                    form.querySelector('[data-action="reset"]').addEventListener('click', () => {
+                        form.reset();
+                        autoFillFromSaved();
+                    });
+                });
+
+                document.querySelectorAll('[data-response] [data-action="copy"]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const box = btn.closest('[data-response]');
+                        const txt = box.querySelector('[data-resp-body]').textContent;
+                        navigator.clipboard.writeText(txt);
+                        btn.textContent = '¡Copiado!';
+                        setTimeout(() => (btn.textContent = 'Copiar JSON'), 1000);
+                    });
+                });
+            };
+
+            /* ========================================================================
+               Init
+               ======================================================================== */
+            document.getElementById('baseUrl').value = state.baseUrl;
+            document.getElementById('saveBaseUrl').addEventListener('click', () => {
+                state.baseUrl = document.getElementById('baseUrl').value.trim();
+                saveState();
+                const btn = document.getElementById('saveBaseUrl');
+                btn.textContent = '¡Guardado!';
+                setTimeout(() => (btn.textContent = 'Guardar'), 1000);
+            });
+            document.getElementById('clearIds').addEventListener('click', () => {
+                if (confirm('¿Borrar todos los IDs guardados?')) {
+                    state.savedIds = {};
+                    saveState();
+                    renderSavedIds();
+                    autoFillFromSaved();
+                }
+            });
+
+            renderSidebar();
+            renderSavedIds();
+            renderEndpoints();
+        </script>
+    </body>
+
+</html>

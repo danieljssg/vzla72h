@@ -20,7 +20,9 @@ const PUBLIC_PROJECTION = {
 };
 
 const stripBase64Prefix = (raw) => {
-  if (typeof raw !== 'string' || raw.length === 0) return raw;
+  if (typeof raw !== 'string' || raw.length === 0) {
+    return raw;
+  }
   const match = raw.match(/^data:[^;]+;base64,/);
   return match ? raw.slice(match[0].length) : raw;
 };
@@ -44,9 +46,9 @@ const ensurePositiveNumber = (value, field) => {
   return num;
 };
 
-export const createDispatch = async (req, res) => {
+export const createDispatch = async (request, reply) => {
   try {
-    const body = req.body || {};
+    const body = request.body || {};
 
     const licensePlate = ensureString(body.licensePlate, 'licensePlate').toUpperCase();
     const driverName = ensureString(body.driverName, 'driverName');
@@ -56,17 +58,17 @@ export const createDispatch = async (req, res) => {
     const emptyPhotoBase64 = body.emptyPhotoBase64;
 
     if (typeof emptyPhotoBase64 !== 'string' || emptyPhotoBase64.length === 0) {
-      return res.status(400).json({ success: false, error: 'emptyPhotoBase64 is required' });
+      return reply.code(400).send({ success: false, error: 'emptyPhotoBase64 is required' });
     }
 
     if (!Array.isArray(body.loadedItems) || body.loadedItems.length === 0) {
-      return res
-        .status(400)
-        .json({ success: false, error: 'loadedItems must be a non-empty array' });
+      return reply
+        .code(400)
+        .send({ success: false, error: 'loadedItems must be a non-empty array' });
     }
 
     if (!body.destination || typeof body.destination !== 'object') {
-      return res.status(400).json({ success: false, error: 'destination is required' });
+      return reply.code(400).send({ success: false, error: 'destination is required' });
     }
 
     const destination = {
@@ -88,7 +90,7 @@ export const createDispatch = async (req, res) => {
 
     const centerExists = await SupplyCenter.exists({ _id: origin });
     if (!centerExists) {
-      return res.status(404).json({ success: false, error: 'SupplyCenter not found' });
+      return reply.code(404).send({ success: false, error: 'SupplyCenter not found' });
     }
 
     const itemNames = itemsInput.map((i) => i.itemName);
@@ -99,17 +101,17 @@ export const createDispatch = async (req, res) => {
 
     for (const entry of itemsInput) {
       if (!itemByName.has(entry.itemName)) {
-        return res
-          .status(400)
-          .json({ success: false, error: `Item "${entry.itemName}" not found in catalog` });
+        return reply
+          .code(400)
+          .send({ success: false, error: `Item "${entry.itemName}" not found in catalog` });
       }
     }
 
     const inventory = await Inventory.findOne({ supplyCenter: origin });
     if (!inventory) {
-      return res
-        .status(404)
-        .json({ success: false, error: 'No inventory record for the given supply center' });
+      return reply
+        .code(404)
+        .send({ success: false, error: 'No inventory record for the given supply center' });
     }
 
     const stockByItemId = new Map(
@@ -120,7 +122,7 @@ export const createDispatch = async (req, res) => {
       const itemId = itemByName.get(entry.itemName)._id.toString();
       const available = stockByItemId.get(itemId) ?? 0;
       if (available < entry.quantity) {
-        return res.status(409).json({
+        return reply.code(409).send({
           success: false,
           error: `Insufficient stock for "${entry.itemName}" (available: ${available}, requested: ${entry.quantity})`,
         });
@@ -159,7 +161,7 @@ export const createDispatch = async (req, res) => {
       }
 
       if (rollbackErr.message === 'INSUFFICIENT_STOCK_RACE') {
-        return res.status(409).json({
+        return reply.code(409).send({
           success: false,
           error: `Insufficient stock for "${rollbackErr.entry.itemName}" (concurrent update)`,
         });
@@ -191,7 +193,7 @@ export const createDispatch = async (req, res) => {
       emptyPhotoBase64: stripBase64Prefix(emptyPhotoBase64),
     });
 
-    return res.status(201).json({
+    return reply.code(201).send({
       success: true,
       data: {
         dispatchId: dispatch._id,
@@ -202,24 +204,26 @@ export const createDispatch = async (req, res) => {
     });
   } catch (error) {
     if (error.statusCode === 400) {
-      return res.status(400).json({ success: false, error: error.message });
+      return reply.code(400).send({ success: false, error: error.message });
     }
     logger.error('[dispatch.controller] createDispatch error:', error);
-    return res.status(500).json({ success: false, error: 'Internal server error' });
+    return reply.code(500).send({ success: false, error: 'Internal server error' });
   }
 };
 
-export const getPublicDispatches = async (req, res) => {
+export const getPublicDispatches = async (request, reply) => {
   try {
-    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
-    const rawLimit = parseInt(req.query.limit, 10) || 20;
+    const page = Math.max(parseInt(request.query.page, 10) || 1, 1);
+    const rawLimit = parseInt(request.query.limit, 10) || 20;
     const limit = Math.min(Math.max(rawLimit, 1), 50);
     const skip = (page - 1) * limit;
 
-    const status = typeof req.query.status === 'string' ? req.query.status : null;
+    const status = typeof request.query.status === 'string' ? request.query.status : null;
 
     const filter = {};
-    if (status) filter.status = status;
+    if (status) {
+      filter.status = status;
+    }
 
     const [items, total] = await Promise.all([
       Dispatch.find(filter, PUBLIC_PROJECTION)
@@ -230,7 +234,7 @@ export const getPublicDispatches = async (req, res) => {
       Dispatch.countDocuments(filter),
     ]);
 
-    return res.status(200).json({
+    return reply.code(200).send({
       success: true,
       data: items,
       page,
@@ -240,15 +244,15 @@ export const getPublicDispatches = async (req, res) => {
     });
   } catch (error) {
     logger.error('[dispatch.controller] getPublicDispatches error:', error);
-    return res.status(500).json({ success: false, error: 'Internal server error' });
+    return reply.code(500).send({ success: false, error: 'Internal server error' });
   }
 };
 
-export const getDispatchByPlateOrCode = async (req, res) => {
+export const getDispatchByPlateOrCode = async (request, reply) => {
   try {
-    const rawQuery = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    const rawQuery = typeof request.query.q === 'string' ? request.query.q.trim() : '';
     if (rawQuery.length === 0) {
-      return res.status(400).json({ success: false, error: 'Query param "q" is required' });
+      return reply.code(400).send({ success: false, error: 'Query param "q" is required' });
     }
 
     const normalized = rawQuery.toUpperCase();
@@ -261,12 +265,12 @@ export const getDispatchByPlateOrCode = async (req, res) => {
       .lean();
 
     if (!dispatch) {
-      return res.status(404).json({ success: false, error: 'Dispatch not found' });
+      return reply.code(404).send({ success: false, error: 'Dispatch not found' });
     }
 
-    return res.status(200).json({ success: true, data: dispatch });
+    return reply.code(200).send({ success: true, data: dispatch });
   } catch (error) {
     logger.error('[dispatch.controller] getDispatchByPlateOrCode error:', error);
-    return res.status(500).json({ success: false, error: 'Internal server error' });
+    return reply.code(500).send({ success: false, error: 'Internal server error' });
   }
 };

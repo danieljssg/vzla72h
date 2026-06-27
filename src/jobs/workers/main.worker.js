@@ -1,6 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { randomUUID } from 'node:crypto';
 import { Worker } from 'bullmq';
 import logger from '../../config/logger.js';
 import { createBullMQConnection } from '../../config/redis.js';
@@ -37,28 +37,6 @@ const mainWorker = new Worker(
           logger.info(`✅ Foto de perfil actualizada correctamente para el usuario ${userId}`);
         } catch (error) {
           logger.error(`❌ Error en UPDATE_OAUTH_DATA: ${error.message}`);
-        }
-        break;
-      }
-
-      case 'USER_PURGE': {
-        try {
-          const { userId } = data;
-          const Job = (await import('../../shared/models/Job.js')).default;
-          const Analysis = (await import('../../shared/models/Analysis.js')).default;
-
-          logger.info(`🧹 Purgando datos para el usuario ID: ${userId}`);
-
-          const [jobsResult, analysesResult] = await Promise.all([
-            Job.deleteMany({ userId }),
-            Analysis.deleteMany({ createdBy: userId }),
-          ]);
-
-          logger.info(
-            `✅ Purge completado para ${userId}: ${jobsResult.deletedCount} jobs, ${analysesResult.deletedCount} análisis`,
-          );
-        } catch (error) {
-          logger.error(`❌ Error en USER_PURGE: ${error.message}`);
         }
         break;
       }

@@ -58,6 +58,5 @@ export function createServiceConnection(label = 'service') {
   return conn;
 }
 
-// Conexiones de servicio (singleton está OK para estos — un solo consumidor cada uno)
+// Cache connection (singleton)
 export const CacheConnection = createServiceConnection('cache');
-export const SessionConnection = createServiceConnection('session');

@@ -1,11 +1,9 @@
-import { Router } from 'express';
-import { cacheMiddleware } from '../../api/middlewares/cache.js';
+import { cachePreHandler } from '../../plugins/cache.js';
 import {
   adjustStockSchema,
   createInventorySchema,
   updateInventorySchema,
 } from '../../utils/validations/schemas/inventorySchema.js';
-import zodValidate from '../../utils/validations/zodValidator.js';
 import {
   adjustStock,
   createInventory,
@@ -16,14 +14,15 @@ import {
   updateInventory,
 } from './inventory.controller.js';
 
-const router = Router();
+const PUBLIC_CACHE_TTL = 300;
+const readCache = cachePreHandler(PUBLIC_CACHE_TTL);
 
-router.get('/', [cacheMiddleware(300)], listInventories);
-router.get('/by-center/:supplyCenterId', getInventoryBySupplyCenter);
-router.get('/:id', getInventoryById);
-router.post('/', zodValidate(createInventorySchema), createInventory);
-router.put('/:id', zodValidate(updateInventorySchema), updateInventory);
-router.patch('/:id/adjust', zodValidate(adjustStockSchema), adjustStock);
-router.delete('/:id', deleteInventory);
-
-export default router;
+export default async function inventoryRoutes(app) {
+  app.get('/', { preHandler: readCache }, listInventories);
+  app.get('/by-center/:supplyCenterId', getInventoryBySupplyCenter);
+  app.get('/:id', getInventoryById);
+  app.post('/', { preHandler: app.validateBody(createInventorySchema) }, createInventory);
+  app.put('/:id', { preHandler: app.validateBody(updateInventorySchema) }, updateInventory);
+  app.patch('/:id/adjust', { preHandler: app.validateBody(adjustStockSchema) }, adjustStock);
+  app.delete('/:id', deleteInventory);
+}

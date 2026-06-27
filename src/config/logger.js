@@ -1,46 +1,35 @@
 import fs from 'node:fs';
-import winston from 'winston';
+import pino from 'pino';
 
 const logDir = 'logs';
 if (!fs.existsSync(logDir)) {
-  fs.mkdirSync(logDir);
+  fs.mkdirSync(logDir, { recursive: true });
 }
 
-const logger = winston.createLogger({
-  level: 'info',
-  format: winston.format.combine(
-    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-    winston.format.errors({ stack: true }),
-    winston.format.json(),
-  ),
-  transports: [
-    new winston.transports.File({
-      filename: 'logs/error.log',
-      level: 'error',
-      maxsize: 5242880,
-      maxFiles: 5,
-    }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
-  ],
-});
+const isProduction = process.env.NODE_ENV === 'production';
 
-logger.add(
-  new winston.transports.Console({
-    format:
-      process.env.NODE_ENV === 'production'
-        ? winston.format.combine(
-            winston.format.printf(({ message, stack }) => {
-              return stack || message;
-            }),
-          )
-        : winston.format.combine(
-            winston.format.colorize(),
-            winston.format.timestamp({ format: 'DD-MM-YYYY HH:mm:ss' }),
-            winston.format.printf(({ timestamp, level, message, stack }) => {
-              return `${timestamp} [${level}]: ${stack || message}`;
-            }),
-          ),
-  }),
+const transport = isProduction
+  ? undefined
+  : pino.transport({
+      target: 'pino-pretty',
+      options: {
+        colorize: true,
+        translateTime: 'DD-MM-YYYY HH:mm:ss',
+        ignore: 'pid,hostname',
+        singleLine: false,
+      },
+    });
+
+const logger = pino(
+  {
+    level: process.env.LOG_LEVEL || 'info',
+    base: { service: 'venezuela-route72-api' },
+    timestamp: pino.stdTimeFunctions.isoTime,
+    formatters: {
+      level: (label) => ({ level: label }),
+    },
+  },
+  transport ?? pino.destination({ dest: 'logs/combined.log', sync: false, mkdir: true }),
 );
 
 export default logger;

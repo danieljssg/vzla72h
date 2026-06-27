@@ -13,54 +13,41 @@ import {
 
 // ==================== CRUD DE USUARIOS ====================
 
-export const getAllUsers = async (_req, res) => {
+export const getAllUsers = async (_request, reply) => {
   try {
-    const users = await User.find({ isActive: true }).select('-password');
-    res.json({
+    const users = await User.find({ isActive: true });
+    return reply.send({
       success: true,
       data: users,
       count: users.length,
     });
   } catch (error) {
     logger.error(error);
-    res.status(400).json({
-      success: false,
-      error: error.message,
-    });
+    return reply.code(400).send({ success: false, error: error.message });
   }
 };
 
 /**
  * Obtener perfil de usuario por tagId
  */
-export const getProfile = async (req, res) => {
+export const getProfile = async (request, reply) => {
   try {
-    const { tagId } = req.params;
-
+    const { tagId } = request.params;
     const user = await getUserByTagId(tagId);
-
-    res.json({
-      success: true,
-      data: user,
-    });
+    return reply.send({ success: true, data: user });
   } catch (error) {
     logger.error(error);
-    res.status(404).json({
-      success: false,
-      error: error.message,
-    });
+    return reply.code(404).send({ success: false, error: error.message });
   }
 };
 
 /**
- * Crear nuevo usuario (requiere autenticación)
+ * Crear nuevo usuario
  */
-export const create = async (req, res) => {
+export const create = async (request, reply) => {
   try {
-    const modifierId = req.user?.id; // ID del usuario autenticado
-    const user = await createNewUser(req.body, modifierId);
-
-    res.status(201).json({
+    const user = await createNewUser(request.body);
+    return reply.code(201).send({
       success: true,
       data: user,
       message: 'User created successfully',
@@ -68,31 +55,24 @@ export const create = async (req, res) => {
   } catch (error) {
     logger.error('Error creating user:', error);
     if (error.name === 'ZodError') {
-      return res.status(400).json({
+      return reply.code(400).send({
         success: false,
         error: 'Validation failed',
-        details: error.errors,
+        details: error.issues,
       });
     }
-
-    res.status(400).json({
-      success: false,
-      error: error.message,
-    });
+    return reply.code(400).send({ success: false, error: error.message });
   }
 };
 
 /**
  * Actualizar usuario
  */
-export const updateSettings = async (req, res) => {
+export const updateSettings = async (request, reply) => {
   try {
-    const { tagId } = req.params;
-    const modifierId = req.user?.id;
-
-    const user = await updateUser(tagId, req.body, modifierId);
-
-    res.json({
+    const { tagId } = request.params;
+    const user = await updateUser(tagId, request.body);
+    return reply.send({
       success: true,
       data: user,
       message: 'User updated successfully',
@@ -100,133 +80,105 @@ export const updateSettings = async (req, res) => {
   } catch (error) {
     logger.error('Error updating user:', error);
     if (error.name === 'ZodError') {
-      return res.status(400).json({
+      return reply.code(400).send({
         success: false,
         error: 'Validation failed',
-        details: error.errors,
+        details: error.issues,
       });
     }
-
-    res.status(400).json({
-      success: false,
-      error: error.message,
-    });
+    return reply.code(400).send({ success: false, error: error.message });
   }
 };
 
 /**
  * Obtener miembros del equipo
  */
-export const getMyTeam = async (req, res) => {
+export const getMyTeam = async (request, reply) => {
   try {
-    const { tagId } = req.params;
-
+    const { tagId } = request.params;
     const teamMembers = await getTeamMembers(tagId);
-
-    res.json({
+    return reply.send({
       success: true,
       data: teamMembers,
       count: teamMembers.length,
     });
   } catch (error) {
     logger.error('Error getting team members:', error);
-    res.status(400).json({
-      success: false,
-      error: error.message,
-    });
+    return reply.code(400).send({ success: false, error: error.message });
   }
 };
 
 /**
  * Obtener jerarquía completa
  */
-export const getHierarchy = async (req, res) => {
+export const getHierarchy = async (request, reply) => {
   try {
-    const { tagId } = req.params;
-
+    const { tagId } = request.params;
     const descendants = await getAllDescendants(tagId);
-
-    res.json({
+    return reply.send({
       success: true,
       data: descendants,
       count: descendants.length,
     });
   } catch (error) {
     logger.error('Error getting hierarchy:', error);
-    res.status(400).json({
-      success: false,
-      error: error.message,
-    });
+    return reply.code(400).send({ success: false, error: error.message });
   }
 };
 
 /**
  * Eliminar usuario (soft delete)
  */
-export const remove = async (req, res) => {
+export const remove = async (request, reply) => {
   try {
-    const { tagId } = req.params;
-    const modifierId = req.user?.id;
-
-    const user = await deleteUser(tagId, modifierId);
-
-    res.json({
+    const { tagId } = request.params;
+    const user = await deleteUser(tagId);
+    return reply.send({
       success: true,
       data: user,
       message: 'User deleted successfully',
     });
   } catch (error) {
     logger.error('Error deleting user:', error);
-    res.status(400).json({
-      success: false,
-      error: error.message,
-    });
+    return reply.code(400).send({ success: false, error: error.message });
   }
 };
 
 /**
  * Mover usuario en la jerarquía
  */
-export const moveUser = async (req, res) => {
+export const moveUser = async (request, reply) => {
   try {
-    const { tagId } = req.params;
-    const { newParentTagId } = req.body;
-    const modifierId = req.user?.id;
-
-    const user = await moveUserToNewHierarchy(tagId, newParentTagId, modifierId);
-
-    res.json({
+    const { tagId } = request.params;
+    const { newParentTagId } = request.body;
+    const user = await moveUserToNewHierarchy(tagId, newParentTagId);
+    return reply.send({
       success: true,
       data: user,
       message: 'User moved successfully',
     });
   } catch (error) {
     logger.error('Error moving user:', error);
-    res.status(400).json({
-      success: false,
-      error: error.message,
-    });
+    return reply.code(400).send({ success: false, error: error.message });
   }
 };
 
 /**
  * Crear múltiples usuarios en batch
  */
-export const createBatch = async (req, res) => {
+export const createBatch = async (request, reply) => {
   try {
-    const { users } = req.body;
-    const modifierId = req.user?.id;
+    const { users } = request.body;
 
     if (!Array.isArray(users) || users.length === 0) {
-      return res.status(400).json({
+      return reply.code(400).send({
         success: false,
         error: 'Users array is required and must not be empty',
       });
     }
 
-    const createdUsers = await createUsersInBatch(users, modifierId);
-
-    res.status(201).json({
+    const createdUsers = await createUsersInBatch(users);
+    return reply.code(201).send({
       success: true,
       data: createdUsers,
       count: createdUsers.length,
@@ -234,9 +186,6 @@ export const createBatch = async (req, res) => {
     });
   } catch (error) {
     logger.error('Error creating users in batch:', error);
-    res.status(400).json({
-      success: false,
-      error: error.message,
-    });
+    return reply.code(400).send({ success: false, error: error.message });
   }
 };
