@@ -2,7 +2,7 @@
   "info": {
     "name": "venezuela-route72",
     "_postman_id": "vr72-collection-0001",
-    "description": "Humanitarian logistics API for contingency dispatches. Public endpoints (no auth, no CSRF, with 5-min cache).",
+    "description": "CRUD endpoints + filesystem uploads for the venezuela-route72 humanitarian logistics API. Public endpoints (no auth, no CSRF), GETs cached 5 min.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -47,258 +47,12 @@
       "type": "string"
     },
     {
-      "key": "managerUserId",
-      "value": "65f0000000000000000000a1",
-      "type": "string"
-    },
-    {
       "key": "needId",
       "value": "",
       "type": "string"
     }
   ],
   "item": [
-    {
-      "name": "EmergencyNeeds",
-      "item": [
-        {
-          "name": "Create emergency need (with optional audio)",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "zone",
-                  "value": "La Guaira - Hospital de Pariata",
-                  "type": "text"
-                },
-                {
-                  "key": "category",
-                  "value": "medicines",
-                  "type": "text"
-                },
-                {
-                  "key": "description",
-                  "value": "Suero fisiológico y antisépticos urgentes",
-                  "type": "text"
-                },
-                {
-                  "key": "reportedBy",
-                  "value": "Coordinación R72",
-                  "type": "text"
-                },
-                {
-                  "key": "audio",
-                  "type": "file",
-                  "src": [],
-                  "disabled": true
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{host_url}}/emergency-needs",
-              "host": [
-                "{{host_url}}"
-              ],
-              "path": [
-                "emergency-needs"
-              ]
-            },
-            "description": "multipart/form-data. The audio field is OPTIONAL. Accepted mimetypes: audio/mpeg, audio/ogg, audio/wav, audio/mp4, audio/aac, audio/webm, audio/opus. Max 3 MB."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 201', () => pm.response.to.have.status(201)); const b = pm.response.json(); pm.expect(b.data).to.have.property('_id'); pm.collectionVariables.set('needId', b.data._id);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "List active emergency needs (cached 5 min)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{host_url}}/emergency-needs?page=1&limit=50",
-              "host": [
-                "{{host_url}}"
-              ],
-              "path": [
-                "emergency-needs"
-              ],
-              "query": [
-                {
-                  "key": "page",
-                  "value": "1"
-                },
-                {
-                  "key": "limit",
-                  "value": "50"
-                },
-                {
-                  "key": "category",
-                  "value": "medicines",
-                  "disabled": true
-                },
-                {
-                  "key": "zone",
-                  "value": "",
-                  "disabled": true
-                },
-                {
-                  "key": "isResolved",
-                  "value": "false",
-                  "disabled": true
-                }
-              ]
-            },
-            "description": "Default filter is isResolved=false. Pass isResolved=true to list resolved ones."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Get public active needs (legacy compat)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{host_url}}/emergency-needs/public/active",
-              "host": [
-                "{{host_url}}"
-              ],
-              "path": [
-                "emergency-needs",
-                "public",
-                "active"
-              ]
-            },
-            "description": "Same payload as /emergency-needs (defaults to isResolved=false). Cached 5 min."
-          }
-        },
-        {
-          "name": "Get emergency need by id",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{host_url}}/emergency-needs/{{needId}}",
-              "host": [
-                "{{host_url}}"
-              ],
-              "path": [
-                "emergency-needs",
-                "{{needId}}"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Update emergency need",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"description\": \"Updated: tripled the requested quantity\",\n  \"category\": \"first_aid\"\n}"
-            },
-            "url": {
-              "raw": "{{host_url}}/emergency-needs/{{needId}}",
-              "host": [
-                "{{host_url}}"
-              ],
-              "path": [
-                "emergency-needs",
-                "{{needId}}"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Resolve emergency need (mark as covered)",
-          "request": {
-            "method": "PATCH",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": ""
-            },
-            "url": {
-              "raw": "{{host_url}}/emergency-needs/{{needId}}/resolve",
-              "host": [
-                "{{host_url}}"
-              ],
-              "path": [
-                "emergency-needs",
-                "{{needId}}",
-                "resolve"
-              ]
-            },
-            "description": "Sets isResolved=true. The need will disappear from the default list."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200)); const b = pm.response.json(); pm.expect(b.data.isResolved).to.eql(true);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Delete emergency need",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{host_url}}/emergency-needs/{{needId}}",
-              "host": [
-                "{{host_url}}"
-              ],
-              "path": [
-                "emergency-needs",
-                "{{needId}}"
-              ]
-            }
-          }
-        }
-      ]
-    },
     {
       "name": "Items",
       "item": [
@@ -335,7 +89,8 @@
                   "disabled": true
                 }
               ]
-            }
+            },
+            "description": "Paginated. Cached 5 min."
           },
           "event": [
             {
@@ -521,7 +276,8 @@
                   "disabled": true
                 }
               ]
-            }
+            },
+            "description": "Cached 5 min."
           }
         },
         {
@@ -553,7 +309,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Centro de Acopio Caracas\",\n  \"managerId\": \"{{managerUserId}}\",\n  \"phone\": \"+584141234567\",\n  \"location\": {\n    \"state\": \"Distrito Capital\",\n    \"city\": \"Caracas\",\n    \"parish\": \"Libertador\",\n    \"address\": \"Av. Urdaneta, esquina Carmelitas\",\n    \"coordinates\": {\n      \"lat\": 10.5061,\n      \"lng\": -66.9146\n    }\n  },\n  \"isActive\": true\n}"
+              "raw": "{\n  \"name\": \"Centro de Acopio Caracas\",\n  \"phone\": \"+584141234567\",\n  \"location\": {\n    \"state\": \"Distrito Capital\",\n    \"city\": \"Caracas\",\n    \"parish\": \"Libertador\",\n    \"address\": \"Av. Urdaneta, esquina Carmelitas\",\n    \"coordinates\": {\n      \"lat\": 10.5061,\n      \"lng\": -66.9146\n    }\n  },\n  \"isActive\": true\n}"
             },
             "url": {
               "raw": "{{host_url}}/supply-centers",
@@ -658,7 +414,8 @@
                   "disabled": true
                 }
               ]
-            }
+            },
+            "description": "Cached 5 min."
           }
         },
         {
@@ -817,7 +574,8 @@
                   "disabled": true
                 }
               ]
-            }
+            },
+            "description": "Cached 5 min."
           }
         },
         {
@@ -867,7 +625,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"supplyCenter\": \"{{supplyCenterId}}\",\n  \"stocks\": [\n    {\n      \"item\": \"{{itemId}}\",\n      \"quantity\": 100\n    },\n    {\n      \"item\": \"65f000000000000000000999\",\n      \"quantity\": 50\n    }\n  ]\n}"
+              "raw": "{\n  \"supplyCenter\": \"{{supplyCenterId}}\",\n  \"stocks\": [\n    {\n      \"item\": \"{{itemId}}\",\n      \"quantity\": 100\n    }\n  ]\n}"
             },
             "url": {
               "raw": "{{host_url}}/inventory",
@@ -1021,7 +779,7 @@
           }
         },
         {
-          "name": "Create dispatch",
+          "name": "Create dispatch (filesystem: emptyPhotoBase64 → /app/storage/carriers/)",
           "request": {
             "method": "POST",
             "header": [
@@ -1042,7 +800,8 @@
               "path": [
                 "dispatches"
               ]
-            }
+            },
+            "description": "Persists dispatch atomically (decrements stock) and enqueues emptyPhotoBase64 for the worker to decode into /app/storage/carriers/<plate>/<uuid>.webp. Use a ~70-byte PNG placeholder for tests; in prod use a 12–15 KB WebP."
           },
           "event": [
             {
@@ -1059,254 +818,10 @@
       ]
     },
     {
-      "name": "Smoke Test",
-      "description": "End-to-end happy path. Run with the Collection Runner in order; each step writes IDs into collection variables consumed by the next. Steps 8-9 validate the EmergencyNeeds flow.",
+      "name": "EmergencyNeeds",
       "item": [
         {
-          "name": "1. Seed Item",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Agua potable 1L\",\n  \"category\": \"hygiene\",\n  \"unit\": \"liters\"\n}"
-            },
-            "url": {
-              "raw": "{{host_url}}/items",
-              "host": [
-                "{{host_url}}"
-              ],
-              "path": [
-                "items"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 201', () => pm.response.to.have.status(201)); const b = pm.response.json(); pm.expect(b.data).to.have.property('_id'); pm.collectionVariables.set('itemId', b.data._id);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "2. Seed SupplyCenter",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Centro Logístico Ruta72\",\n  \"managerId\": \"{{managerUserId}}\",\n  \"phone\": \"+584141234567\",\n  \"location\": {\n    \"state\": \"Miranda\",\n    \"city\": \"Caracas\",\n    \"parish\": \"Sucre\",\n    \"address\": \"Calle principal, edificio R72\",\n    \"coordinates\": {\n      \"lat\": 10.4806,\n      \"lng\": -66.9036\n    }\n  }\n}"
-            },
-            "url": {
-              "raw": "{{host_url}}/supply-centers",
-              "host": [
-                "{{host_url}}"
-              ],
-              "path": [
-                "supply-centers"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 201', () => pm.response.to.have.status(201)); const b = pm.response.json(); pm.collectionVariables.set('supplyCenterId', b.data._id);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "3. Seed Carrier",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"licensePlate\": \"R72-SMK1\",\n  \"vehicleType\": \"pickup\",\n  \"model\": \"Toyota Hilux\",\n  \"driver\": {\n    \"firstName\": \"Smoke\",\n    \"lastName\": \"Test\",\n    \"idNumber\": \"V-00000001\",\n    \"phone\": \"+584140000001\"\n  }\n}"
-            },
-            "url": {
-              "raw": "{{host_url}}/carriers",
-              "host": [
-                "{{host_url}}"
-              ],
-              "path": [
-                "carriers"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 201', () => pm.response.to.have.status(201)); const b = pm.response.json(); pm.collectionVariables.set('licensePlate', b.data.licensePlate);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "4. Seed Inventory (100 units of the seeded item)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"supplyCenter\": \"{{supplyCenterId}}\",\n  \"stocks\": [\n    {\n      \"item\": \"{{itemId}}\",\n      \"quantity\": 100\n    }\n  ]\n}"
-            },
-            "url": {
-              "raw": "{{host_url}}/inventory",
-              "host": [
-                "{{host_url}}"
-              ],
-              "path": [
-                "inventory"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 201', () => pm.response.to.have.status(201)); const b = pm.response.json(); pm.collectionVariables.set('inventoryId', b.data._id);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "5. Create Dispatch (atomic stock deduction + photo enqueue)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"licensePlate\": \"{{licensePlate}}\",\n  \"driverName\": \"Smoke Test\",\n  \"driverPhone\": \"+584140000001\",\n  \"origin\": \"{{supplyCenterId}}\",\n  \"originName\": \"Centro Logístico Ruta72\",\n  \"destination\": {\n    \"state\": \"Miranda\",\n    \"city\": \"Petare\",\n    \"parish\": \"Leoncio Martinez\",\n    \"specificLocation\": \"Zona colonial, calle 1\"\n  },\n  \"loadedItems\": [\n    {\n      \"itemName\": \"Agua potable 1L\",\n      \"quantity\": 10,\n      \"unit\": \"liters\"\n    }\n  ],\n  \"emptyPhotoBase64\": \"UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAwA0JaQAA3AA/vuUAAA=\"\n}"
-            },
-            "url": {
-              "raw": "{{host_url}}/dispatches",
-              "host": [
-                "{{host_url}}"
-              ],
-              "path": [
-                "dispatches"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 201 (instant <50ms)', () => pm.response.to.have.status(201)); pm.test('Response time < 200ms', () => pm.expect(pm.response.responseTime).to.be.below(200)); const b = pm.response.json(); pm.expect(b.data).to.have.property('tripCode'); pm.expect(b.data.tripCode).to.match(/^[A-Z0-9]{6}$/); pm.collectionVariables.set('dispatchId', b.data.dispatchId); pm.collectionVariables.set('tripCode', b.data.tripCode);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "6. Verify stock was deducted (90 left)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{host_url}}/inventory/by-center/{{supplyCenterId}}",
-              "host": [
-                "{{host_url}}"
-              ],
-              "path": [
-                "inventory",
-                "by-center",
-                "{{supplyCenterId}}"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200)); const b = pm.response.json(); const stock = (b.data.stocks || []).find((s) => s.item && s.item._id === pm.collectionVariables.get('itemId')); pm.test('Stock decremented to 90', () => pm.expect(stock && stock.quantity).to.eql(90));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "7. Lookup the dispatch by trip code (exercises GET /dispatches/lookup)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{host_url}}/dispatches/lookup?q={{tripCode}}",
-              "host": [
-                "{{host_url}}"
-              ],
-              "path": [
-                "dispatches",
-                "lookup"
-              ],
-              "query": [
-                {
-                  "key": "q",
-                  "value": "{{tripCode}}"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200)); const b = pm.response.json(); pm.expect(b.data).to.have.property('tripCode', pm.collectionVariables.get('tripCode'));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "8. Seed EmergencyNeed (zone + category + reportedBy)",
+          "name": "Create emergency need (filesystem: multipart audio → /app/storage/requests/)",
           "request": {
             "method": "POST",
             "header": [],
@@ -1330,7 +845,7 @@
                 },
                 {
                   "key": "reportedBy",
-                  "value": "Smoke Test Coordinator",
+                  "value": "Coordinación R72",
                   "type": "text"
                 },
                 {
@@ -1349,7 +864,8 @@
               "path": [
                 "emergency-needs"
               ]
-            }
+            },
+            "description": "multipart/form-data. The audio field is OPTIONAL. Accepted mimetypes: audio/mpeg, audio/ogg, audio/wav, audio/mp4, audio/aac, audio/webm, audio/opus. Max 3 MB. When provided, the file is written to /app/storage/requests/ and the public URL is stored in audioPath."
           },
           "event": [
             {
@@ -1364,7 +880,133 @@
           ]
         },
         {
-          "name": "9. Resolve the EmergencyNeed (mark as covered)",
+          "name": "List active emergency needs (cached 5 min)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host_url}}/emergency-needs?page=1&limit=50",
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "emergency-needs"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "category",
+                  "value": "medicines",
+                  "disabled": true
+                },
+                {
+                  "key": "zone",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "isResolved",
+                  "value": "false",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Default filter is isResolved=false. Pass isResolved=true to list resolved ones. Supports ?category= and ?zone= (regex, case-insensitive)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get public active needs (legacy compat)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host_url}}/emergency-needs/public/active",
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "emergency-needs",
+                "public",
+                "active"
+              ]
+            },
+            "description": "Same payload as /emergency-needs (defaults to isResolved=false). Cached 5 min."
+          }
+        },
+        {
+          "name": "Get emergency need by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host_url}}/emergency-needs/{{needId}}",
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "emergency-needs",
+                "{{needId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update emergency need",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated: tripled the requested quantity\",\n  \"category\": \"first_aid\"\n}"
+            },
+            "url": {
+              "raw": "{{host_url}}/emergency-needs/{{needId}}",
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "emergency-needs",
+                "{{needId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Resolve emergency need (mark as covered)",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -1382,7 +1024,8 @@
                 "{{needId}}",
                 "resolve"
               ]
-            }
+            },
+            "description": "Sets isResolved=true. The need will disappear from the default list."
           },
           "event": [
             {
@@ -1395,6 +1038,23 @@
               }
             }
           ]
+        },
+        {
+          "name": "Delete emergency need",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{host_url}}/emergency-needs/{{needId}}",
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "emergency-needs",
+                "{{needId}}"
+              ]
+            }
+          }
         }
       ]
     }

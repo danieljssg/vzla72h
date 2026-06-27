@@ -11,20 +11,19 @@
 
 ## Variables de la colección
 
-| Variable         | Descripción                                            | Default                     |
-| ---------------- | ------------------------------------------------------ | --------------------------- |
-| `host_url`       | Base URL de la API (sin `/` final)                     | `http://localhost:3100/api` |
-| `itemId`         | Se rellena al crear un Item                            | vacío                       |
-| `supplyCenterId` | Se rellena al crear un SupplyCenter                    | vacío                       |
-| `carrierId`      | Se rellena al crear un Carrier                         | vacío                       |
-| `inventoryId`    | Se rellena al crear un Inventory                       | vacío                       |
-| `dispatchId`     | Se rellena al crear un Dispatch                        | vacío                       |
-| `tripCode`       | Se rellena al crear un Dispatch                        | vacío                       |
-| `needId`         | Se rellena al crear un EmergencyNeed                   | vacío                       |
-| `licensePlate`   | Placa usada en dispatches (debe existir como Carrier)  | `R72-ABC1`                  |
-| `managerUserId`  | ObjectId de un User existente (coordinador del centro) | `65f0000000000000000000a1`  |
+| Variable         | Descripción                                           | Default                     |
+| ---------------- | ----------------------------------------------------- | --------------------------- |
+| `host_url`       | Base URL de la API (sin `/` final)                    | `http://localhost:3100/api` |
+| `itemId`         | Se rellena al crear un Item                           | vacío                       |
+| `supplyCenterId` | Se rellena al crear un SupplyCenter                   | vacío                       |
+| `carrierId`      | Se rellena al crear un Carrier                        | vacío                       |
+| `inventoryId`    | Se rellena al crear un Inventory                      | vacío                       |
+| `dispatchId`     | Se rellena al crear un Dispatch                       | vacío                       |
+| `tripCode`       | Se rellena al crear un Dispatch                       | vacío                       |
+| `licensePlate`   | Placa usada en dispatches (debe existir como Carrier) | `R72-ABC1`                  |
+| `needId`         | Se rellena al crear un EmergencyNeed                  | vacío                       |
 
-> ⚠️ Antes de correr **Smoke Test**, edita la variable `managerUserId` con un ObjectId real de tu colección `users`. Si no, `POST /api/supply-centers` fallará con 400.
+> ⚠️ Antes de correr el **Smoke Test**, edita la variable `needId` con un ObjectId real de tu colección `emergency-needs`. Si no, `POST /emergency-needs` fallará con 400.
 
 ## Estructura de la colección
 
@@ -34,7 +33,6 @@
 - **Inventory** — CRUD + `GET /by-center/:id` + `PATCH /:id/adjust` (delta).
 - **Dispatches** — `POST /`, `GET /` (paginado + filtro `status`), `GET /lookup?q=`.
 - **EmergencyNeeds** — `POST /` (multipart con audio opcional), `GET /`, `GET /public/active`, `GET /:id`, `PUT /:id`, `PATCH /:id/resolve`, `DELETE /:id`.
-- **Smoke Test** — flujo end-to-end (7 pasos). Se ejecuta con el **Collection Runner** en orden.
 
 ## Ejecutar el Smoke Test
 
@@ -91,7 +89,7 @@ POST   /api/dispatches
 GET    /api/dispatches
 GET    /api/dispatches/lookup?q=
 
-POST   /api/emergency-needs        (multipart/form-data, audio opcional)
+POST   /api/emergency-needs        (multipart formdata, audio opcional)
 GET    /api/emergency-needs
 GET    /api/emergency-needs/public/active
 GET    /api/emergency-needs/:id
@@ -100,8 +98,6 @@ PATCH  /api/emergency-needs/:id/resolve
 DELETE /api/emergency-needs/:id
 ```
 
-## Photo payload en Dispatch
+## Notas sobre audio en EmergencyNeeds
 
-`emptyPhotoBase64` debe ser un string Base64 (con o sin prefijo `data:image/webp;base64,`). El controller hace `stripBase64Prefix` antes de encolarlo, y el worker lo decodifica con `Buffer.from(..., 'base64')` para escribir un `.webp` en `/app/storage/carriers/<licensePlate>/<uuid>.webp`.
-
-Para el Smoke Test se usa un PNG mínimo (~70 bytes) válido para que el decode no falle; en producción usa un WebP de 12–15 KB pre-comprimido en el cliente.
+El campo `audio` en `POST /api/emergency-needs` es opcional (multipart/form-data). Mimetypes aceptados: `audio/mpeg`, `audio/ogg`, `audio/wav`, `audio/mp4`, `audio/aac`, `audio/webm`, `audio/opus`. Tamaño máximo: 3 MB.
