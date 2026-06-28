@@ -28,6 +28,11 @@ const logger = pino(
     formatters: {
       level: (label) => ({ level: label }),
     },
+    // Serialize Error objects so the message/stack are visible in logs.
+    serializers: {
+      err: pino.stdSerializers.err,
+      error: pino.stdSerializers.err,
+    },
   },
   transport ?? pino.destination({ dest: 'logs/combined.log', sync: false, mkdir: true }),
 );

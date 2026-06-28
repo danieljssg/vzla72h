@@ -1,6 +1,9 @@
 // Global error handler for Fastify.
 // Maps known Mongoose errors and Zod errors to clean HTTP responses.
 const handler = (error, request, reply) => {
+  // Always log the full error so it's visible in pino-pretty (with stack + message).
+  request.log.error({ err: error }, `[${request.method} ${request.url}] Unhandled error`);
+
   // Mongoose validation
   if (error.name === 'ValidationError' && error.errors) {
     return reply.code(400).send({
@@ -48,7 +51,6 @@ const handler = (error, request, reply) => {
 
   // Default: log and return 500
   if (error.statusCode >= 500 || !error.statusCode) {
-    request.log.error({ err: error }, 'Unhandled server error');
     return reply.code(500).send({
       success: false,
       error: process.env.NODE_ENV === 'development' ? error.message : 'Internal Server Error',

@@ -63,13 +63,52 @@ function validateQuery(schema) {
   };
 }
 
+// Pre-handler: parses a multipart/form-data request and populates
+// request.body with the regular text fields. Any file parts are buffered
+// and exposed on request._multipartFiles = [{ fieldname, filename, mimetype, buffer }, ...].
+//
+// This MUST run before validateBody so the Zod schema sees the parsed fields.
+// For non-multipart requests, this is a no-op.
+async function parseMultipartFields(request, _reply) {
+  if (!request.isMultipart || !request.isMultipart()) {
+    return;
+  }
+
+  const body = {};
+  const files = [];
+
+  for await (const part of request.parts()) {
+    if (part.type === 'file') {
+      const buffer = await part.toBuffer();
+      files.push({
+        fieldname: part.fieldname,
+        filename: part.filename,
+        mimetype: part.mimetype,
+        buffer,
+      });
+    } else {
+      body[part.fieldname] = part.value;
+    }
+  }
+
+  request.body = body;
+  request._multipartFiles = files;
+}
+
 async function validatePlugin(app) {
   app.decorate('validateBody', validateBody);
   app.decorate('validateParams', validateParams);
   app.decorate('validateQuery', validateQuery);
+  app.decorate('parseMultipartFields', parseMultipartFields);
   // Backwards-compat alias (used in older route code).
   app.decorate('validate', validateBody);
 }
 
-export { validateBody, validateParams, validatePlugin, validateQuery };
-export default { validateBody, validateParams, validateQuery, validatePlugin };
+export { parseMultipartFields, validateBody, validateParams, validatePlugin, validateQuery };
+export default {
+  parseMultipartFields,
+  validateBody,
+  validateParams,
+  validateQuery,
+  validatePlugin,
+};

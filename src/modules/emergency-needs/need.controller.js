@@ -31,31 +31,31 @@ const sanitizeExtension = (originalName, mimetype) => {
   return '.ogg';
 };
 
-// Read the multipart audio file uploaded in field "audio" into a buffer.
-const readAudioFile = async (request) => {
-  if (!request.isMultipart()) {
+// Read the pre-collected audio file (parsed by parseMultipartFields preHandler).
+const readAudioFile = (request) => {
+  const files = request._multipartFiles;
+  if (!files || files.length === 0) {
     return null;
   }
 
-  const file = await request.file();
-  if (!file || file.fieldname !== 'audio') {
+  const audio = files.find((f) => f.fieldname === 'audio');
+  if (!audio) {
     return null;
   }
 
-  const buffer = await file.toBuffer();
   return {
-    buffer,
-    mimetype: file.mimetype,
-    originalname: file.filename,
+    buffer: audio.buffer,
+    mimetype: audio.mimetype,
+    originalname: audio.filename,
   };
 };
 
 export const createEmergencyNeed = async (request, reply) => {
   try {
-    const { zone, category, description, reportedBy, lat, lng } = request.body;
+    const { zone, category, urgency, description, reportedBy, lat, lng } = request.body;
     let audioPath = null;
 
-    const audio = await readAudioFile(request);
+    const audio = readAudioFile(request);
     if (audio) {
       await mkdir(AUDIO_STORAGE_DIR, { recursive: true });
       const ext = sanitizeExtension(audio.originalname, audio.mimetype);
@@ -76,6 +76,7 @@ export const createEmergencyNeed = async (request, reply) => {
     const newNeed = await EmergencyNeed.create({
       zone,
       category,
+      urgency,
       description: description || '',
       reportedBy,
       audioPath,
@@ -108,6 +109,9 @@ export const listEmergencyNeeds = async (request, reply) => {
     const filter = {};
     if (typeof request.query.category === 'string' && request.query.category.length > 0) {
       filter.category = request.query.category;
+    }
+    if (typeof request.query.urgency === 'string' && request.query.urgency.length > 0) {
+      filter.urgency = request.query.urgency;
     }
     if (request.query.isResolved !== undefined) {
       filter.isResolved = request.query.isResolved === 'true';

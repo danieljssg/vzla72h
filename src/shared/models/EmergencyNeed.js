@@ -1,5 +1,7 @@
 import { model, Schema } from 'mongoose';
 
+export const URGENCY_LEVELS = ['baja', 'media', 'alta', 'critica'];
+
 const emergencyNeedSchema = new Schema(
   {
     zone: {
@@ -14,6 +16,13 @@ const emergencyNeedSchema = new Schema(
       required: true,
       enum: ['food', 'clothing', 'medicines', 'first_aid', 'tools', 'other'],
       default: 'other',
+      index: true,
+    },
+    urgency: {
+      type: String,
+      required: true,
+      enum: URGENCY_LEVELS,
+      default: 'media',
       index: true,
     },
     description: {
@@ -52,5 +61,6 @@ emergencyNeedSchema.index({ location: '2dsphere' });
 emergencyNeedSchema.index({ zone: 'text', description: 'text' }, { name: 'need_search_text_idx' });
 emergencyNeedSchema.index({ isResolved: 1, createdAt: -1 });
 emergencyNeedSchema.index({ category: 1, isResolved: 1 });
+emergencyNeedSchema.index({ urgency: 1, isResolved: 1 });
 
 export default model('EmergencyNeed', emergencyNeedSchema);

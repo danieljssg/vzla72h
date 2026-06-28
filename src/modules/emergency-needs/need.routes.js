@@ -1,4 +1,5 @@
 import { cachePreHandler } from '../../plugins/cache.js';
+import { parseMultipartFields } from '../../plugins/validate.js';
 import {
   createEmergencyNeedSchema,
   updateEmergencyNeedSchema,
@@ -18,7 +19,13 @@ const PUBLIC_CACHE_TTL = 300;
 const readCache = cachePreHandler(PUBLIC_CACHE_TTL);
 
 export default async function emergencyNeedRoutes(app) {
-  app.post('/', { preHandler: app.validateBody(createEmergencyNeedSchema) }, createEmergencyNeed);
+  app.post(
+    '/',
+    {
+      preHandler: [parseMultipartFields, app.validateBody(createEmergencyNeedSchema)],
+    },
+    createEmergencyNeed,
+  );
   app.get('/', { preHandler: readCache }, listEmergencyNeeds);
   app.get('/near', nearEmergencyNeeds);
   app.get('/public/active', { preHandler: readCache }, getActiveNeeds);

@@ -27,13 +27,10 @@ export async function buildServer() {
     disableRequestLogging: false,
     trustProxy: true,
     bodyLimit: 10 * 1024 * 1024,
-    ajv: {
-      customOptions: {
-        removeAdditional: 'all',
-        coerceTypes: true,
-        useDefaults: true,
-      },
-    },
+    // Body validation is handled explicitly per-route via app.validateBody(zodSchema)
+    // in src/plugins/validate.js. We disable Fastify's default body schema validation
+    // so AJV does not strip or coerce fields before Zod sees them.
+    disableRequestLogging: false,
   });
 
   // Core plugins

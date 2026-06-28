@@ -54,20 +54,51 @@ export const getSupplyCenterById = async (request, reply) => {
   }
 };
 
+// Flatten the { photo: { data, mimeType } } object into the model's two
+// separate string fields. Accepts a data URL prefix and strips it.
+const extractPhoto = (photo) => {
+  if (!photo || !photo.data) return { photo: null, photoMimeType: null };
+  const dataUrlMatch = /^data:([^;]+);base64,(.+)$/.exec(photo.data);
+  if (dataUrlMatch) {
+    return { photo: dataUrlMatch[2], photoMimeType: dataUrlMatch[1] };
+  }
+  return { photo: photo.data, photoMimeType: photo.mimeType ?? null };
+};
+
+// Convert { lat, lng } from the request body into the GeoJSON Point
+// format required by MongoDB's 2dsphere index:
+//   { type: 'Point', coordinates: [lng, lat] }
+const toGeoJsonPoint = ({ lat, lng }) => {
+  if (typeof lat !== 'number' || typeof lng !== 'number') return null;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return { type: 'Point', coordinates: [lng, lat] };
+};
+
+const buildLocationPayload = (location) => {
+  const point = toGeoJsonPoint(location.coordinates || {});
+  if (!point) {
+    return { error: 'Invalid location coordinates (lat must be -90..90, lng -180..180)' };
+  }
+  return {
+    location: {
+      state: location.state,
+      city: location.city,
+      parish: location.parish,
+      address: location.address,
+      coordinates: point,
+    },
+  };
+};
+
 export const createSupplyCenter = async (request, reply) => {
   try {
-    const body = { ...request.body };
-    if (body.location) {
-      const point = toGeoPoint({
-        lat: body.location.lat,
-        lng: body.location.lng,
-      });
-      if (!point) {
-        return reply.code(400).send({ success: false, error: 'Invalid location lat/lng' });
-      }
-      body.location.coordinates = point;
+    const { photo, location, ...rest } = request.body;
+    const built = buildLocationPayload(location);
+    if (built.error) {
+      return reply.code(400).send({ success: false, error: built.error });
     }
-    const center = await SupplyCenter.create(body);
+    const photoFields = extractPhoto(photo);
+    const center = await SupplyCenter.create({ ...rest, ...built, ...photoFields });
     return reply.code(201).send({ success: true, data: center });
   } catch (error) {
     if (error.name === 'ValidationError') {
@@ -78,23 +109,26 @@ export const createSupplyCenter = async (request, reply) => {
     if (error.name === 'CastError') {
       return reply.code(400).send({ success: false, error: 'Invalid ObjectId' });
     }
-    logger.error('[supply-centers.controller] createSupplyCenter error:', error);
+    logger.error({ err: error, body: request.body }, '[supply-centers] createSupplyCenter error');
     return reply.code(500).send({ success: false, error: 'Internal server error' });
   }
 };
 
 export const updateSupplyCenter = async (request, reply) => {
   try {
-    const update = { ...request.body };
-    if (update.location) {
-      const point = toGeoPoint({
-        lat: update.location.lat,
-        lng: update.location.lng,
-      });
-      if (!point) {
-        return reply.code(400).send({ success: false, error: 'Invalid location lat/lng' });
+    const { photo, location, ...rest } = request.body;
+    const update = { ...rest };
+    if (location) {
+      const built = buildLocationPayload(location);
+      if (built.error) {
+        return reply.code(400).send({ success: false, error: built.error });
       }
-      update.location.coordinates = point;
+      update.location = built.location;
+    }
+    if (photo !== undefined) {
+      const photoFields = extractPhoto(photo);
+      update.photo = photoFields.photo;
+      update.photoMimeType = photoFields.photoMimeType;
     }
     const center = await SupplyCenter.findByIdAndUpdate(
       request.params.id,

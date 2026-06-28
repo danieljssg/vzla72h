@@ -16,7 +16,23 @@ const connectDb = async () => {
       autoIndex: true,
     });
 
-    logger.info(`✅ MongoDB Conectado: ${conn.connection.host} / ${conn.connection.name}`);
+    logger.info(`MongoDB Conectado: ${conn.connection.host} / ${conn.connection.name}`);
+
+    // Drop the legacy 2dsphere index that pointed at the whole `location`
+    // sub-document (which is not a GeoJSON object). Mongoose will create
+    // the corrected `location.coordinates_2dsphere` index automatically
+    // on startup (autoIndex: true). Safe to run if the old index is gone.
+    try {
+      const coll = mongoose.connection.db.collection('supplycenters');
+      const indexes = await coll.indexes();
+      const legacy = indexes.find((idx) => idx.name === 'location_2dsphere');
+      if (legacy) {
+        await coll.dropIndex('location_2dsphere');
+        logger.info('Índice obsoleto `location_2dsphere` eliminado de supplycenters');
+      }
+    } catch (idxErr) {
+      logger.warn(`No se pudo limpiar el índice obsoleto: ${idxErr.message}`);
+    }
 
     mongoose.connection.on('error', (err) => {
       logger.error(`Error de conexión en tiempo de ejecución: ${err}`);
@@ -26,7 +42,7 @@ const connectDb = async () => {
       logger.warn('Se ha perdido la conexión con MongoDB. Reintentando...');
     });
   } catch (error) {
-    logger.error(`❌ Error al conectar a MongoDB: ${error.message}`);
+    logger.error(`Error al conectar a MongoDB: ${error.message}`);
     process.exit(1);
   }
 };

@@ -50,9 +50,119 @@
       "key": "needId",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "userTagId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "List users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host_url}}/users",
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "supplyCenter",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Auth runs in the frontend (better-auth). This endpoint only returns the active users' profile records."
+          }
+        },
+        {
+          "name": "Get user by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host_url}}/users/by-id/{{userId}}",
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "users",
+                "by-id",
+                "{{userId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Daniel\",\n  \"lastName\": \"Saud\",\n  \"email\": \"daniel.saud@example.com\",\n  \"profilePicture\": \"https://example.com/avatar.png\",\n  \"supplyCenter\": \"{{supplyCenterId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{host_url}}/users",
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "users"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201)); const b = pm.response.json(); if (b.data && b.data._id) { pm.collectionVariables.set('userId', b.data._id); } if (b.data && b.data.tagId) { pm.collectionVariables.set('userTagId', b.data.tagId); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deactivate user (soft delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{host_url}}/users/{{userTagId}}",
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "users",
+                "{{userTagId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
     {
       "name": "Items",
       "item": [
@@ -63,8 +173,12 @@
             "header": [],
             "url": {
               "raw": "{{host_url}}/items?page=1&limit=50",
-              "host": ["{{host_url}}"],
-              "path": ["items"],
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "items"
+              ],
               "query": [
                 {
                   "key": "page",
@@ -107,8 +221,13 @@
             "header": [],
             "url": {
               "raw": "{{host_url}}/items/{{itemId}}",
-              "host": ["{{host_url}}"],
-              "path": ["items", "{{itemId}}"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "items",
+                "{{itemId}}"
+              ]
             }
           },
           "event": [
@@ -116,7 +235,9 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"]
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
               }
             }
           ]
@@ -137,8 +258,12 @@
             },
             "url": {
               "raw": "{{host_url}}/items",
-              "host": ["{{host_url}}"],
-              "path": ["items"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "items"
+              ]
             }
           },
           "event": [
@@ -169,8 +294,13 @@
             },
             "url": {
               "raw": "{{host_url}}/items/{{itemId}}",
-              "host": ["{{host_url}}"],
-              "path": ["items", "{{itemId}}"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "items",
+                "{{itemId}}"
+              ]
             }
           },
           "event": [
@@ -178,7 +308,9 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"]
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
               }
             }
           ]
@@ -190,8 +322,13 @@
             "header": [],
             "url": {
               "raw": "{{host_url}}/items/{{itemId}}",
-              "host": ["{{host_url}}"],
-              "path": ["items", "{{itemId}}"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "items",
+                "{{itemId}}"
+              ]
             }
           },
           "event": [
@@ -199,7 +336,9 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"]
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
               }
             }
           ]
@@ -216,8 +355,12 @@
             "header": [],
             "url": {
               "raw": "{{host_url}}/supply-centers?page=1&limit=50",
-              "host": ["{{host_url}}"],
-              "path": ["supply-centers"],
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "supply-centers"
+              ],
               "query": [
                 {
                   "key": "page",
@@ -254,8 +397,13 @@
             "header": [],
             "url": {
               "raw": "{{host_url}}/supply-centers/{{supplyCenterId}}",
-              "host": ["{{host_url}}"],
-              "path": ["supply-centers", "{{supplyCenterId}}"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "supply-centers",
+                "{{supplyCenterId}}"
+              ]
             }
           }
         },
@@ -271,12 +419,16 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Centro de Acopio Caracas\",\n  \"phone\": \"+584141234567\",\n  \"location\": {\n    \"state\": \"Distrito Capital\",\n    \"city\": \"Caracas\",\n    \"parish\": \"Libertador\",\n    \"address\": \"Av. Urdaneta, esquina Carmelitas\",\n    \"coordinates\": {\n      \"lat\": 10.5061,\n      \"lng\": -66.9146\n    }\n  },\n  \"isActive\": true\n}"
+              "raw": "{\n  \"name\": \"Centro de Acopio Caracas\",\n  \"phone\": \"+584141234567\",\n  \"location\": {\n    \"state\": \"Distrito Capital\",\n    \"city\": \"Caracas\",\n    \"parish\": \"Libertador\",\n    \"address\": \"Av. Urdaneta, esquina Carmelitas\",\n    \"coordinates\": {\n      \"lat\": 10.5061,\n      \"lng\": -66.9146\n    }\n  },\n  \"isActive\": true,\n  \"photo\": {\n    \"data\": \"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=\",\n    \"mimeType\": \"image/png\"\n  }\n}"
             },
             "url": {
               "raw": "{{host_url}}/supply-centers",
-              "host": ["{{host_url}}"],
-              "path": ["supply-centers"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "supply-centers"
+              ]
             }
           },
           "event": [
@@ -307,8 +459,13 @@
             },
             "url": {
               "raw": "{{host_url}}/supply-centers/{{supplyCenterId}}",
-              "host": ["{{host_url}}"],
-              "path": ["supply-centers", "{{supplyCenterId}}"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "supply-centers",
+                "{{supplyCenterId}}"
+              ]
             }
           }
         },
@@ -319,8 +476,13 @@
             "header": [],
             "url": {
               "raw": "{{host_url}}/supply-centers/{{supplyCenterId}}",
-              "host": ["{{host_url}}"],
-              "path": ["supply-centers", "{{supplyCenterId}}"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "supply-centers",
+                "{{supplyCenterId}}"
+              ]
             }
           }
         }
@@ -336,8 +498,12 @@
             "header": [],
             "url": {
               "raw": "{{host_url}}/carriers?page=1&limit=50",
-              "host": ["{{host_url}}"],
-              "path": ["carriers"],
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "carriers"
+              ],
               "query": [
                 {
                   "key": "page",
@@ -369,8 +535,13 @@
             "header": [],
             "url": {
               "raw": "{{host_url}}/carriers/{{carrierId}}",
-              "host": ["{{host_url}}"],
-              "path": ["carriers", "{{carrierId}}"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "carriers",
+                "{{carrierId}}"
+              ]
             }
           }
         },
@@ -390,8 +561,12 @@
             },
             "url": {
               "raw": "{{host_url}}/carriers",
-              "host": ["{{host_url}}"],
-              "path": ["carriers"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "carriers"
+              ]
             }
           },
           "event": [
@@ -422,8 +597,13 @@
             },
             "url": {
               "raw": "{{host_url}}/carriers/{{carrierId}}",
-              "host": ["{{host_url}}"],
-              "path": ["carriers", "{{carrierId}}"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "carriers",
+                "{{carrierId}}"
+              ]
             }
           }
         },
@@ -443,8 +623,14 @@
             },
             "url": {
               "raw": "{{host_url}}/carriers/{{carrierId}}/status",
-              "host": ["{{host_url}}"],
-              "path": ["carriers", "{{carrierId}}", "status"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "carriers",
+                "{{carrierId}}",
+                "status"
+              ]
             }
           }
         },
@@ -455,8 +641,13 @@
             "header": [],
             "url": {
               "raw": "{{host_url}}/carriers/{{carrierId}}",
-              "host": ["{{host_url}}"],
-              "path": ["carriers", "{{carrierId}}"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "carriers",
+                "{{carrierId}}"
+              ]
             }
           }
         }
@@ -472,8 +663,12 @@
             "header": [],
             "url": {
               "raw": "{{host_url}}/inventory?page=1&limit=50",
-              "host": ["{{host_url}}"],
-              "path": ["inventory"],
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "inventory"
+              ],
               "query": [
                 {
                   "key": "page",
@@ -500,8 +695,14 @@
             "header": [],
             "url": {
               "raw": "{{host_url}}/inventory/by-center/{{supplyCenterId}}",
-              "host": ["{{host_url}}"],
-              "path": ["inventory", "by-center", "{{supplyCenterId}}"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "inventory",
+                "by-center",
+                "{{supplyCenterId}}"
+              ]
             }
           }
         },
@@ -512,8 +713,13 @@
             "header": [],
             "url": {
               "raw": "{{host_url}}/inventory/{{inventoryId}}",
-              "host": ["{{host_url}}"],
-              "path": ["inventory", "{{inventoryId}}"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "inventory",
+                "{{inventoryId}}"
+              ]
             }
           }
         },
@@ -533,8 +739,12 @@
             },
             "url": {
               "raw": "{{host_url}}/inventory",
-              "host": ["{{host_url}}"],
-              "path": ["inventory"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "inventory"
+              ]
             }
           },
           "event": [
@@ -565,8 +775,13 @@
             },
             "url": {
               "raw": "{{host_url}}/inventory/{{inventoryId}}",
-              "host": ["{{host_url}}"],
-              "path": ["inventory", "{{inventoryId}}"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "inventory",
+                "{{inventoryId}}"
+              ]
             }
           }
         },
@@ -586,8 +801,14 @@
             },
             "url": {
               "raw": "{{host_url}}/inventory/{{inventoryId}}/adjust",
-              "host": ["{{host_url}}"],
-              "path": ["inventory", "{{inventoryId}}", "adjust"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "inventory",
+                "{{inventoryId}}",
+                "adjust"
+              ]
             }
           }
         },
@@ -598,8 +819,13 @@
             "header": [],
             "url": {
               "raw": "{{host_url}}/inventory/{{inventoryId}}",
-              "host": ["{{host_url}}"],
-              "path": ["inventory", "{{inventoryId}}"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "inventory",
+                "{{inventoryId}}"
+              ]
             }
           }
         }
@@ -615,8 +841,12 @@
             "header": [],
             "url": {
               "raw": "{{host_url}}/dispatches?page=1&limit=20",
-              "host": ["{{host_url}}"],
-              "path": ["dispatches"],
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "dispatches"
+              ],
               "query": [
                 {
                   "key": "page",
@@ -642,8 +872,13 @@
             "header": [],
             "url": {
               "raw": "{{host_url}}/dispatches/lookup?q={{licensePlate}}",
-              "host": ["{{host_url}}"],
-              "path": ["dispatches", "lookup"],
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "dispatches",
+                "lookup"
+              ],
               "query": [
                 {
                   "key": "q",
@@ -669,8 +904,12 @@
             },
             "url": {
               "raw": "{{host_url}}/dispatches",
-              "host": ["{{host_url}}"],
-              "path": ["dispatches"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "dispatches"
+              ]
             },
             "description": "Persists dispatch atomically (decrements stock) and enqueues emptyPhotoBase64 for the worker to decode into /app/storage/carriers/<plate>/<uuid>.webp. Use a ~70-byte PNG placeholder for tests; in prod use a 12–15 KB WebP."
           },
@@ -710,6 +949,11 @@
                   "type": "text"
                 },
                 {
+                  "key": "urgency",
+                  "value": "critica",
+                  "type": "text"
+                },
+                {
                   "key": "description",
                   "value": "Suero fisiológico y antisépticos urgentes",
                   "type": "text"
@@ -729,10 +973,14 @@
             },
             "url": {
               "raw": "{{host_url}}/emergency-needs",
-              "host": ["{{host_url}}"],
-              "path": ["emergency-needs"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "emergency-needs"
+              ]
             },
-            "description": "multipart/form-data. The audio field is OPTIONAL. Accepted mimetypes: audio/mpeg, audio/ogg, audio/wav, audio/mp4, audio/aac, audio/webm, audio/opus. Max 3 MB. When provided, the file is written to /app/storage/requests/ and the public URL is stored in audioPath."
+            "description": "multipart/form-data. The audio field is OPTIONAL. Accepted mimetypes: audio/mpeg, audio/ogg, audio/wav, audio/mp4, audio/aac, audio/webm, audio/opus. Max 3 MB. When provided, the file is written to /app/storage/requests/ and the public URL is stored in audioPath. urgency is one of: baja | media | alta | critica (default media)."
           },
           "event": [
             {
@@ -753,8 +1001,12 @@
             "header": [],
             "url": {
               "raw": "{{host_url}}/emergency-needs?page=1&limit=50",
-              "host": ["{{host_url}}"],
-              "path": ["emergency-needs"],
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "emergency-needs"
+              ],
               "query": [
                 {
                   "key": "page",
@@ -767,6 +1019,11 @@
                 {
                   "key": "category",
                   "value": "medicines",
+                  "disabled": true
+                },
+                {
+                  "key": "urgency",
+                  "value": "alta",
                   "disabled": true
                 },
                 {
@@ -788,7 +1045,9 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"]
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
               }
             }
           ]
@@ -800,8 +1059,14 @@
             "header": [],
             "url": {
               "raw": "{{host_url}}/emergency-needs/public/active",
-              "host": ["{{host_url}}"],
-              "path": ["emergency-needs", "public", "active"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "emergency-needs",
+                "public",
+                "active"
+              ]
             },
             "description": "Same payload as /emergency-needs (defaults to isResolved=false). Cached 5 min."
           }
@@ -813,8 +1078,13 @@
             "header": [],
             "url": {
               "raw": "{{host_url}}/emergency-needs/{{needId}}",
-              "host": ["{{host_url}}"],
-              "path": ["emergency-needs", "{{needId}}"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "emergency-needs",
+                "{{needId}}"
+              ]
             }
           },
           "event": [
@@ -822,7 +1092,9 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"]
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
               }
             }
           ]
@@ -843,8 +1115,13 @@
             },
             "url": {
               "raw": "{{host_url}}/emergency-needs/{{needId}}",
-              "host": ["{{host_url}}"],
-              "path": ["emergency-needs", "{{needId}}"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "emergency-needs",
+                "{{needId}}"
+              ]
             }
           }
         },
@@ -859,8 +1136,14 @@
             },
             "url": {
               "raw": "{{host_url}}/emergency-needs/{{needId}}/resolve",
-              "host": ["{{host_url}}"],
-              "path": ["emergency-needs", "{{needId}}", "resolve"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "emergency-needs",
+                "{{needId}}",
+                "resolve"
+              ]
             },
             "description": "Sets isResolved=true. The need will disappear from the default list."
           },
@@ -883,8 +1166,13 @@
             "header": [],
             "url": {
               "raw": "{{host_url}}/emergency-needs/{{needId}}",
-              "host": ["{{host_url}}"],
-              "path": ["emergency-needs", "{{needId}}"]
+              "host": [
+                "{{host_url}}"
+              ],
+              "path": [
+                "emergency-needs",
+                "{{needId}}"
+              ]
             }
           }
         }

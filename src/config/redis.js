@@ -21,11 +21,11 @@ export function createBullMQConnection(label = 'bullmq') {
   });
 
   conn.on('connect', () => {
-    logger.info(`[Redis:${label}] ✅ Conectado Correctamente`);
+    logger.info(`[Redis:${label}] Conectado Correctamente`);
   });
 
   conn.on('error', (err) => {
-    logger.error(`[Redis:${label}] ❌ Error de conexión: ${err.message}`);
+    logger.error(`[Redis:${label}] Error de conexión: ${err.message}`);
   });
 
   conn.on('close', () => {
@@ -48,11 +48,11 @@ export function createServiceConnection(label = 'service') {
   });
 
   conn.on('connect', () => {
-    logger.info(`[Redis:${label}] ✅ Conectado`);
+    logger.info(`[Redis:${label}] Conectado`);
   });
 
   conn.on('error', (err) => {
-    logger.error(`[Redis:${label}] ❌ Error: ${err.message}`);
+    logger.error(`[Redis:${label}] Error: ${err.message}`);
   });
 
   return conn;

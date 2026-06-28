@@ -1,23 +1,29 @@
 import { z } from 'zod';
 
 const CATEGORIES = ['food', 'clothing', 'medicines', 'first_aid', 'tools', 'other'];
+const URGENCY = ['baja', 'media', 'alta', 'critica'];
 
 export const createEmergencyNeedSchema = z.object({
   zone: z.string().min(2, 'zone must be at least 2 characters').max(200).trim(),
   category: z.enum(CATEGORIES, { errorMap: () => ({ message: 'Invalid category' }) }),
+  urgency: z
+    .enum(URGENCY, { errorMap: () => ({ message: 'Invalid urgency' }) })
+    .optional()
+    .default('media'),
   description: z.string().max(1000).trim().optional().default(''),
   reportedBy: z.string().min(2, 'reportedBy must be at least 2 characters').max(200).trim(),
-  lat: z.number().min(-90).max(90).optional(),
-  lng: z.number().min(-180).max(180).optional(),
+  lat: z.coerce.number().min(-90).max(90).optional(),
+  lng: z.coerce.number().min(-180).max(180).optional(),
 });
 
 export const updateEmergencyNeedSchema = z
   .object({
     zone: z.string().min(2).max(200).trim().optional(),
     category: z.enum(CATEGORIES).optional(),
+    urgency: z.enum(URGENCY).optional(),
     description: z.string().max(1000).trim().optional(),
     reportedBy: z.string().min(2).max(200).trim().optional(),
-    lat: z.number().min(-90).max(90).optional(),
-    lng: z.number().min(-180).max(180).optional(),
+    lat: z.coerce.number().min(-90).max(90).optional(),
+    lng: z.coerce.number().min(-180).max(180).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: 'Body must not be empty' });
